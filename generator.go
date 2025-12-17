@@ -14,6 +14,7 @@ import (
 	"image/color"
 	"log"
 	"math"
+	"path/filepath"
 	"strings"
 
 	"github.com/fogleman/gg"
@@ -35,6 +36,12 @@ const (
 	// !"#$%&'()*+,-./ 0123456789:;<=>?
 	Alpha_EN string = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	Alpha_ES string = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZÁÉÍÓÚ"
+	Alpha_CZ string = "ABCČDĎEFGHIJKLMNŇOPQRŘSŠTŤUVWXYÝZŽÁÉÍÓÚĚŮ"
+	Alpha_DE string = "ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜẞ"
+	Alpha_IT string = "ABCDEFGHILMNOPQRSTUVZÉÓÀÈÌÒÙ"
+	Alpha_PT string = "ABCÇDEFGHIJKLMNOPQRSTUVWXYZÁÉÍÓÚÀÂÊÔÃÕ"
+	Alpha_GR string = "ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ"
+	Alpha_RU string = "АБВГДЕËЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
 	Alpha_PU string = `!"#$%&'()*+,-./ 0123456789:;<=>?`
 
 	SubTitle string = "C a e s a r  D i s k"
@@ -93,8 +100,8 @@ func (w CaesarWheelOptions) String() string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%15s: %d x %d pixels\n", "Size", w.Size.Dx(), w.Size.Dy())
 	fmt.Fprintf(&sb, "%15s: %d pixels\n", "Radius", int(w.Radius))
-	fmt.Fprintf(&sb, "%15s: %s @ %f\n", "Text font", w.LettersFontPath, w.LettersSize)
-	fmt.Fprintf(&sb, "%15s: %s @ %f\n", "Digit font", w.DigitsFontPath, w.DigitsSize)
+	fmt.Fprintf(&sb, "%15s: %s @ %.3f\n", "Text font", w.LettersFontPath, w.LettersSize)
+	fmt.Fprintf(&sb, "%15s: %s @ %.3f\n", "Digit font", w.DigitsFontPath, w.DigitsSize)
 	fmt.Fprintf(&sb, "%15s: %t\n", "Orthogonal", w.Orthogonal)
 	return sb.String()
 }
@@ -119,7 +126,7 @@ func loadFont(fontPath string, size float64) font.Face {
 }
 
 // Draw a text in a semicircle (arc)
-func drawArcText(arcText string, fontSize, width, height, radius float64, onLeft bool, fontPath string, dc *gg.Context) {
+func drawArcText(arcText string, fgColor color.Color, fontSize, width, height, radius float64, onLeft bool, fontPath string, dc *gg.Context) {
 	// Calculate the arc text position
 	arcLength := float64(len(arcText)) * fontSize * 0.5 // Estimate arc length based on font size
 	startAngle := -arcLength / (2 * radius)             // Start angle for the text arc
@@ -140,7 +147,8 @@ func drawArcText(arcText string, fontSize, width, height, radius float64, onLeft
 		dc.Push()
 		dc.Translate(x, y)
 		dc.Rotate(angle + math.Pi/2) // Rotate to align character
-		dc.SetRGB(0, 0, 0)           // black color for the text
+		//dc.SetRGB(0, 0, 0)           // black color for the text
+		dc.SetColor(fgColor)
 		dc.SetFontFace(arcFace)
 		dc.DrawStringAnchored(string(r), 0, 0, 0.5, 0.5) // Draw character
 		dc.Pop()
@@ -159,8 +167,8 @@ func GenerateCaesarWheel(letters string, filename string, inner bool, opts Caesa
 	y := float64(opts.Size.Dy() / 2)
 
 	dc := gg.NewContext(opts.Size.Dx(), opts.Size.Dy())
+	dc.Clear()         // start with transparent background
 	dc.SetRGB(1, 1, 1) // White background
-	dc.Clear()
 
 	// Load a TrueType font file, i.e. Arial.ttf
 	textFace := loadFont(opts.LettersFontPath, opts.LettersSize)
@@ -168,9 +176,20 @@ func GenerateCaesarWheel(letters string, filename string, inner bool, opts Caesa
 
 	// Draw the main circle outline
 	dc.SetLineWidth(2)
-	if !inner {
+	if !inner { // Disk with outer transparency
+		dc.DrawCircle(x, y, opts.Radius)
+		dc.Fill() // fill with white
+
 		dc.SetColor(color.Black)
 		dc.DrawCircle(x, y, opts.Radius)
+		dc.Stroke()
+	} else { // Inner disk with outer transparency
+		dc.DrawCircle(x, y, opts.Radius-opts.LettersSize-8)
+		dc.Fill()
+
+		dc.SetLineWidth(2)
+		dc.SetRGB255(0xd3, 0xd3, 0xd3)
+		dc.DrawCircle(x, y, opts.Radius-opts.LettersSize-10)
 		dc.Stroke()
 	}
 
@@ -211,7 +230,6 @@ func GenerateCaesarWheel(letters string, filename string, inner bool, opts Caesa
 			textX := x + textRadius*math.Cos(midAngle)
 			textY := y + textRadius*math.Sin(midAngle)
 
-			//dc.SetRGB(0, 0, 0) // Black color for text
 			dc.SetColor(opts.LetterColor.ToColor())
 			dc.Push()
 			dc.Translate(textX, textY)
@@ -219,7 +237,6 @@ func GenerateCaesarWheel(letters string, filename string, inner bool, opts Caesa
 			// DrawStringAnchored aligns the text's center point ot the calculated (textX, textY)
 			// 0.5 are the anchor points meaning 50% horizontal offset and 50% vertical offset,
 			// thus centered.
-			//dc.DrawStringAnchored(label, textX, textY, 0.5, 0.5)
 			dc.DrawStringAnchored(label, 0, 0, 0.5, 0.5)
 			dc.Pop()
 
@@ -236,17 +253,10 @@ func GenerateCaesarWheel(letters string, filename string, inner bool, opts Caesa
 			dc.Push()
 			dc.Translate(digitsX, digitsY)
 			dc.Rotate(angle)
-			//dc.DrawStringAnchored(indexLabel, digitsX, digitsY, 0.5, 0.5)
 			dc.DrawStringAnchored(indexLabel, 0, 0, 0.5, 0.5)
 			dc.Pop()
 		} else {
 			var textAltRadius = opts.Radius * 0.85
-
-			// Draw the main circle outline
-			dc.SetLineWidth(2)
-			dc.SetRGB255(0xd3, 0xd3, 0xd3)
-			dc.DrawCircle(x, y, opts.Radius-opts.LettersSize-10.0)
-			dc.Stroke()
 
 			textAltX := x + textAltRadius*math.Cos(midAngle)
 			textAltY := y + textAltRadius*math.Sin(midAngle)
@@ -262,9 +272,9 @@ func GenerateCaesarWheel(letters string, filename string, inner bool, opts Caesa
 			endAngle := (float64(1) / float64(n)) * 2 * math.Pi
 			dc.SetLineWidth(0.75)
 			dc.SetRGB(0.827, 0.827, 0.827)
-			dc.DrawArc(x, y, indexRadius+opts.DigitsSize, 0, endAngle)
+			dc.DrawArc(x, y, indexRadius+opts.DigitsSize-2, 0, endAngle)
 			dc.Stroke()
-			dc.DrawArc(x, y, indexRadius-opts.DigitsSize, 0, endAngle)
+			dc.DrawArc(x, y, indexRadius-opts.DigitsSize-2, 0, endAngle)
 			dc.Stroke()
 		}
 	}
@@ -275,26 +285,31 @@ func GenerateCaesarWheel(letters string, filename string, inner bool, opts Caesa
 	dc.DrawCircle(float64(opts.Size.Dx())/2, float64(opts.Size.Dy())/2, DOT_RADIUS)
 	dc.Fill() // Fill the circle to make it look like a solid dot
 
-	// Optional Arc Text
-	drawArcText(SubTitle, opts.LettersSize, float64(opts.Size.Dx()), float64(opts.Size.Dy()), opts.Radius*0.65, true, "ubuntu.bold.ttf", dc)
+	// -- Epilogue
+	// · Arc Text: "Caesar Disk"
+	// · Optional Arc Text: Title
+	drawArcText(SubTitle, color.Black, opts.LettersSize, float64(opts.Size.Dx()), float64(opts.Size.Dy()), opts.Radius*0.65, true, "ubuntu.bold.ttf", dc)
 	if len(opts.Title) != 0 {
-		drawArcText(opts.Title, opts.LettersSize, float64(opts.Size.Dx()), float64(opts.Size.Dy()), opts.Radius*0.65, false, "ubuntu.regular.ttf", dc)
+		drawArcText(opts.Title, color.Black, opts.LettersSize, float64(opts.Size.Dx()), float64(opts.Size.Dy()), opts.Radius*0.65, false, "ubuntu.regular.ttf", dc)
 	}
 
-	// Disk info
+	// · Disk set assembly information (inner OR outer disk)
 	copyrightFace := loadFont(opts.LettersFontPath, 10.0)
 	dc.SetFontFace(copyrightFace)
-	dc.SetColor(color.Black)
+	dc.SetColor(Yellow.ToColor())
 	textInfo := "Outer Disk"
 	if inner {
 		textInfo = "Inner Disk"
 	}
 	dc.DrawStringAnchored(textInfo, float64(10), float64(opts.Size.Dy()-20), 0, 0.5)
 
-	// Copyright text
+	// · Copyright & Donations text
 	copyrightText := "https://buymeacoffee.com/lostinwriting"
-
 	dc.DrawStringAnchored(copyrightText, float64(opts.Size.Dx()/2), float64(opts.Size.Dy()-20), 0.5, 0.5)
+
+	// · Text font used in rendering
+	basename := filepath.Base(opts.LettersFontPath)
+	dc.DrawStringAnchored(basename, float64(opts.Size.Dx())*0.80, float64(opts.Size.Dy()-20), 0.5, 0.5)
 
 	if err := dc.SavePNG(filename); err != nil { // or use SaveJPG
 		return fmt.Errorf("failed to save image: %w", err)

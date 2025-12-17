@@ -18,9 +18,17 @@ import (
 /* ----------------------------------------------------------------
  *						G l o b a l s
  *-----------------------------------------------------------------*/
-const ()
 
-var ()
+const (
+	LANG_CZ string = "CZ" // Czech
+	LANG_DE string = "DE" // Deutsch (German)
+	LANG_EN string = "EN" // English
+	LANG_ES string = "ES" // Español (Spanish)
+	LANG_GR string = "GR" // Greek (Ελληνικά)
+	LANG_IT string = "IT" // Italiano
+	LANG_PT string = "PT" // Português
+	LANG_RU string = "RU" // Russian (русский) (кириллица)
+)
 
 /* ----------------------------------------------------------------
  *					F u n c t i o n s
@@ -50,14 +58,24 @@ func main() {
 	// the letter at the III o'clock position.
 
 	// I. Command-line flag definition and parsing
-	var flgHelp, flgES, flgPunct bool
+	var flgHelp, flgES, flgRU, flgPT, flgDE, flgGR, flgIT, flgCZ, flgPunct bool
 	var flgTextFontPath, flgDigitFontPath, flgAlphabet, flgTitle string
 	flag.Usage = Usage
 	flag.BoolVar(&flgHelp, "help", false, "This help")
-	flag.BoolVar(&flgES, "ES", false, "Spanish alphabet (overrides -alpha)")
+	// 1.1 flags for supported preset languages
+	flag.BoolVar(&flgES, LANG_ES, false, "Spanish alphabet (overrides -alpha)")
+	flag.BoolVar(&flgIT, LANG_IT, false, "Italian alphabet (overrides -alpha)")
+	flag.BoolVar(&flgPT, LANG_PT, false, "Portuguese alphabet (overrides -alpha)")
+	flag.BoolVar(&flgDE, LANG_DE, false, "German alphabet (overrides -alpha)")
+	flag.BoolVar(&flgRU, LANG_RU, false, "Cyrillic alphabet (overrides -alpha)")
+	flag.BoolVar(&flgGR, LANG_GR, false, "Greek alphabet (overrides -alpha)")
+	flag.BoolVar(&flgCZ, LANG_CZ, false, "Czech alphabet (overrides -alpha)")
+	// 1.2 flags for preset full punctuation, symbols, numbers and space (auxillary disk)
 	flag.BoolVar(&flgPunct, "PU", false, "Punctuation and numerical alphabet (overrides -alpha)")
-	flag.StringVar(&flgTitle, "title", "", "Title (usually disk language or ID)")
+	// 1.3 flag for custom alphabet
 	flag.StringVar(&flgAlphabet, "alpha", "", "Alphabet defaults to English ASCII alphabet")
+	// 1.4 flags for output formatting
+	flag.StringVar(&flgTitle, "title", "", "Title (usually disk language or ID)")
 	flag.StringVar(&flgTextFontPath, "text-font", "", "Text font path")
 	flag.StringVar(&flgDigitFontPath, "digit-font", "", "Digit font path (else use same text font)")
 	flag.Parse()
@@ -78,27 +96,104 @@ func main() {
 				Options.DigitsFontPath = flgTextFontPath
 			}
 		}
+		untitled := true
+		var langSuffix string
+		if len(flgTitle) != 0 {
+			untitled = false
+		}
+
+		var alphabet string = caesardisk.Alpha_EN
+		switch {
+		case flgPunct:
+			alphabet = caesardisk.Alpha_PU
+			langSuffix = "PU"
+
+		case flgES:
+			alphabet = caesardisk.Alpha_ES
+			if untitled {
+				flgTitle = "Español"
+			}
+			langSuffix = LANG_ES
+
+		case flgIT:
+			alphabet = caesardisk.Alpha_IT
+			if untitled {
+				flgTitle = "Italiano"
+			}
+			langSuffix = LANG_IT
+
+		case flgPT:
+			alphabet = caesardisk.Alpha_PT
+			if untitled {
+				flgTitle = "Português"
+			}
+			langSuffix = LANG_PT
+
+		case flgDE:
+			alphabet = caesardisk.Alpha_DE
+			if untitled {
+				flgTitle = "Deutsch"
+			}
+			langSuffix = LANG_DE
+
+		case flgCZ:
+			alphabet = caesardisk.Alpha_CZ
+			if untitled {
+				flgTitle = "Czech"
+			}
+			langSuffix = LANG_CZ
+
+		case flgGR:
+			alphabet = caesardisk.Alpha_GR
+			if untitled {
+				flgTitle = "Greek"
+			}
+			langSuffix = LANG_GR
+
+		case flgRU:
+			alphabet = caesardisk.Alpha_RU
+			if untitled {
+				flgTitle = "Cyrillic"
+			}
+			langSuffix = LANG_RU
+
+		case len(flgAlphabet) != 0:
+			alphabet = flgAlphabet // custom alphabet
+			langSuffix = ""
+
+		default:
+			alphabet = caesardisk.Alpha_EN
+			langSuffix = LANG_EN
+		}
+
 		if len(flgTitle) != 0 {
 			flgTitle := strings.Join(strings.Split(flgTitle, ""), " ")
 			Options.Title = flgTitle
 		}
 
-		var alphabet string = caesardisk.Alpha_EN
-		if flgPunct {
-			alphabet = caesardisk.Alpha_PU
-		} else if flgES {
-			alphabet = caesardisk.Alpha_ES
+		// III. Execute
+		generateFilename := func(basename string, isInner bool, suffix string) string {
+			if len(suffix) != 0 {
+				basename = basename + "_" + suffix
+			}
+			if isInner {
+				basename = basename + "_inner.png"
+			} else {
+				basename = basename + "_outer.png"
+			}
+			return basename
 		}
 
-		// III. Execute
 		generateWheel := func(alpha, filename string, inner bool, options caesardisk.CaesarWheelOptions) {
+			filename = generateFilename(filename, inner, langSuffix)
 			if err := caesardisk.GenerateCaesarWheel(alpha, filename, inner, options); err != nil {
 				fmt.Println(err)
 			}
 		}
 
-		generateWheel(alphabet, "caesar_disk_outer.png", false, Options)
-		generateWheel(alphabet, "caesar_disk_inner.png", true, Options)
+		// the filename is in base form
+		generateWheel(alphabet, "caesar_disk", false, Options)
+		generateWheel(alphabet, "caesar_disk", true, Options)
 		fmt.Print(Options)
 		fmt.Printf("%15s: %s\n", "Alphabet", alphabet)
 	}
