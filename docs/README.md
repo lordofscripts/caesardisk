@@ -1,6 +1,13 @@
 # goCaesarDisk
 `Created: 16 Dic 2025`
 
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/lordofscripts/caesardisk)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lordofscripts/caesardisk?style=flat-square)](https://goreportcard.com/report/github.com/lordofscripts/caesardisk)
+![Build](https://github.com/lordofscripts/caesardisk/actions/workflows/go.yml/badge.svg)
+[![Go Reference](https://pkg.go.dev/badge/github.com/lordofscripts/caesardisk.svg)](https://pkg.go.dev/github.com/lordofscripts/caesardisk)
+[![GitHub release (with filter)](https://img.shields.io/github/v/release/lordofscripts/caesardisk)](https://github.com/lordofscripts/caesardisk/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://choosealicense.com/licenses/mit/)
+
 A pure GO application to generat  two images that, put together, are
 used to implement a Caesar cipher encoding/decoding disk. Simply 
 overlap the *inner* disk over the *outer* disk and pin it through
@@ -13,7 +20,7 @@ use it for many languages, including those supported by my
 `goCaesarX` suite: English, Spanish, Italian, Portuguese, German
 and Czech. If you plan to generate your disk for Cyrillic or
 Greek characters, you will need to supply a TrueType (*.ttf) font 
-that supports those characters.
+that supports those characters or use any of BreamCatcher or Toxicogenesis.
 
 The *XIROD* font is a free font, also free for commercial use and 
 developed by [1001 Fonts](https://www.1001fonts.com/xirod-font.html).
@@ -21,6 +28,11 @@ developed by [1001 Fonts](https://www.1001fonts.com/xirod-font.html).
 The *Ubuntu* fonts are free fonts, also free for commercial use and 
 developed by [Dalton Maag](https://www.1001fonts.com/ubuntu-font.html)
 and funded by Canonical.
+
+The *BreamCatcher* & *Toxicogenesis* fonts are free fonts, also free 
+for commercial use and developed by [RaymondLarabie](https://www.1001fonts.com/users/typodermic/).
+For German (`-DE` flag) I recommend BreamCatcher which supports all
+German characters.
 
 ## Usage
 
