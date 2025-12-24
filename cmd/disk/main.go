@@ -8,8 +8,10 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/lordofscripts/caesardisk"
@@ -30,9 +32,26 @@ const (
 	LANG_RU string = "RU" // Russian (русский) (кириллица)
 )
 
+var (
+	ErrDualNotSupported error = errors.New("the -dual option is only valid for English & Spanish")
+)
+
 /* ----------------------------------------------------------------
  *					F u n c t i o n s
  *-----------------------------------------------------------------*/
+
+// Death of an application by outputting a good-bye and setting
+// the OS exit code. It is logged as fatal.
+func Die(message string, exitCode int) {
+	fmt.Println("\n", "\t💀 x 💀 x 💀\n\t", message, "\n\tExit code: ", exitCode)
+	os.Exit(exitCode)
+}
+
+// display the error and die with an exit code, logging it as Fatal.
+func DieWithError(err error, exitCode int) {
+	fmt.Println("\n", "\t💀 x 💀 x 💀\n\t", err.Error(), "\n\tExit code: ", exitCode)
+	os.Exit(exitCode)
+}
 
 func Usage() {
 	fmt.Println("Usage:")
@@ -58,7 +77,7 @@ func main() {
 	// the letter at the III o'clock position.
 
 	// I. Command-line flag definition and parsing
-	var flgHelp, flgES, flgRU, flgPT, flgDE, flgGR, flgIT, flgCZ, flgPunct bool
+	var flgHelp, flgES, flgRU, flgPT, flgDE, flgGR, flgIT, flgCZ, flgPunct, flgDual bool
 	var flgTextFontPath, flgDigitFontPath, flgAlphabet, flgTitle string
 	flag.Usage = Usage
 	flag.BoolVar(&flgHelp, "help", false, "This help")
@@ -70,6 +89,7 @@ func main() {
 	flag.BoolVar(&flgRU, LANG_RU, false, "Cyrillic alphabet (overrides -alpha)")
 	flag.BoolVar(&flgGR, LANG_GR, false, "Greek alphabet (overrides -alpha)")
 	flag.BoolVar(&flgCZ, LANG_CZ, false, "Czech alphabet (overrides -alpha)")
+	flag.BoolVar(&flgDual, "dual", false, "Dual alphabet disk (only for -ES and -EN)")
 	// 1.2 flags for preset full punctuation, symbols, numbers and space (auxillary disk)
 	flag.BoolVar(&flgPunct, "PU", false, "Punctuation and numerical alphabet (overrides -alpha)")
 	// 1.3 flag for custom alphabet
@@ -102,68 +122,80 @@ func main() {
 			untitled = false
 		}
 
-		var alphabet string = caesardisk.Alpha_EN
+		alphabetLet := caesardisk.Alpha_EN
+		alphabetPun := "" // only used in dual-disk print-out
 		switch {
 		case flgPunct:
-			alphabet = caesardisk.Alpha_PU
+			alphabetLet = caesardisk.Alpha_PU
 			langSuffix = "PU"
 
 		case flgES:
-			alphabet = caesardisk.Alpha_ES
+			alphabetLet = caesardisk.Alpha_ES
 			if untitled {
 				flgTitle = "Español"
 			}
 			langSuffix = LANG_ES
+			if flgDual { // Spanish -ES supports -dual
+				alphabetLet = caesardisk.Alpha_ES_DUAL
+				alphabetPun = caesardisk.Alpha_PU_DUAL_ES
+			}
 
 		case flgIT:
-			alphabet = caesardisk.Alpha_IT
+			alphabetLet = caesardisk.Alpha_IT
 			if untitled {
 				flgTitle = "Italiano"
 			}
 			langSuffix = LANG_IT
 
 		case flgPT:
-			alphabet = caesardisk.Alpha_PT
+			alphabetLet = caesardisk.Alpha_PT
 			if untitled {
 				flgTitle = "Português"
 			}
 			langSuffix = LANG_PT
 
 		case flgDE:
-			alphabet = caesardisk.Alpha_DE
+			alphabetLet = caesardisk.Alpha_DE
 			if untitled {
 				flgTitle = "Deutsch"
 			}
 			langSuffix = LANG_DE
 
 		case flgCZ:
-			alphabet = caesardisk.Alpha_CZ
+			alphabetLet = caesardisk.Alpha_CZ
 			if untitled {
 				flgTitle = "Czech"
 			}
 			langSuffix = LANG_CZ
 
 		case flgGR:
-			alphabet = caesardisk.Alpha_GR
+			alphabetLet = caesardisk.Alpha_GR
 			if untitled {
 				flgTitle = "Greek"
 			}
 			langSuffix = LANG_GR
 
 		case flgRU:
-			alphabet = caesardisk.Alpha_RU
+			alphabetLet = caesardisk.Alpha_RU
 			if untitled {
 				flgTitle = "Cyrillic"
 			}
 			langSuffix = LANG_RU
 
 		case len(flgAlphabet) != 0:
-			alphabet = flgAlphabet // custom alphabet
+			alphabetLet = flgAlphabet // custom alphabet
 			langSuffix = ""
 
 		default:
-			alphabet = caesardisk.Alpha_EN
+			alphabetLet = caesardisk.Alpha_EN
 			langSuffix = LANG_EN
+			if flgDual { // English (default) -EN supports -dual
+				alphabetPun = caesardisk.Alpha_PU_DUAL_EN
+			}
+		}
+
+		if flgDual && len(alphabetPun) == 0 {
+			DieWithError(ErrDualNotSupported, 1)
 		}
 
 		if len(flgTitle) != 0 {
@@ -173,9 +205,15 @@ func main() {
 
 		// III. Execute
 		generateFilename := func(basename string, isInner bool, suffix string) string {
+			// the ISO language code
 			if len(suffix) != 0 {
 				basename = basename + "_" + suffix
 			}
+			// whether it is a Dual version, else single
+			if flgDual {
+				basename = basename + "_dual"
+			}
+			// Inner vs. Outer disk ID
 			if isInner {
 				basename = basename + "_inner.png"
 			} else {
@@ -184,18 +222,28 @@ func main() {
 			return basename
 		}
 
-		generateWheel := func(alpha, filename string, inner bool, options caesardisk.CaesarWheelOptions) {
+		generateWheel := func(alpha, filename string, inner, dual bool, options caesardisk.CaesarWheelOptions) {
 			filename = generateFilename(filename, inner, langSuffix)
-			if err := caesardisk.GenerateCaesarWheel(alpha, filename, inner, options); err != nil {
-				fmt.Println(err)
+			var err error = nil
+			if !dual {
+				err = caesardisk.GenerateCaesarWheel(alpha, filename, inner, options)
+			} else {
+				err = caesardisk.GenerateDualCaesarWheel(alpha, alphabetPun, filename, inner, options)
+			}
+
+			if err != nil {
+				DieWithError(err, 2)
 			}
 		}
 
 		// the filename is in base form
-		generateWheel(alphabet, "caesar_disk", false, Options)
-		generateWheel(alphabet, "caesar_disk", true, Options)
+		generateWheel(alphabetLet, "caesar_disk", false, flgDual, Options)
+		generateWheel(alphabetLet, "caesar_disk", true, flgDual, Options)
 		fmt.Print(Options)
-		fmt.Printf("%15s: %s\n", "Alphabet", alphabet)
+		fmt.Printf("%15s: %s\n", "Alphabet", alphabetLet)
+		if flgDual {
+			fmt.Printf("%15s: %s\n", "Symbols ", alphabetPun)
+		}
 	}
 
 	caesardisk.BuyMeCoffee()

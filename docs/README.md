@@ -1,5 +1,5 @@
 # goCaesarDisk
-`Created: 16 Dic 2025`
+`Created: 16 Dec 2025`    `Updated: 24 Dec 2025`
 
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/lordofscripts/caesardisk)
 [![Go Report Card](https://goreportcard.com/badge/github.com/lordofscripts/caesardisk?style=flat-square)](https://goreportcard.com/report/github.com/lordofscripts/caesardisk)
@@ -8,7 +8,7 @@
 [![GitHub release (with filter)](https://img.shields.io/github/v/release/lordofscripts/caesardisk)](https://github.com/lordofscripts/caesardisk/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://choosealicense.com/licenses/mit/)
 
-A pure GO application to generat  two images that, put together, are
+A pure GO application to generate two images which, when put together, are
 used to implement a Caesar cipher encoding/decoding disk. Simply 
 overlap the *inner* disk over the *outer* disk and pin it through
 the middle hole.
@@ -34,7 +34,24 @@ for commercial use and developed by [RaymondLarabie](https://www.1001fonts.com/u
 For German (`-DE` flag) I recommend BreamCatcher which supports all
 German characters.
 
-## Usage
+## Installation and Usage
+
+Whether you plan to use the library, or install the application and
+use it, we got you covered. Just follow the simple instructions.
+
+### Installation
+
+To get the library for development purposes while keeping in mind 
+the [License](../LICENSE):
+
+> go get github.com/lordofscripts/caesardisk
+
+But if you are only interested in using the application to generate
+your own disk sets for yourself, family or friends:
+
+> go get github.com/lordofscripts/caesardisk/cmd/disk
+
+### Command Usage
 
 To generate the English disks using the default fonts:
 
@@ -44,6 +61,7 @@ To generate discs containing the Spanish alphabet with the default
 built-in fonts:
 
 > caesardisk -title "Spanish" -ES
+> caesardisk -title "Spanish" -ES -dual
 
 If you wish to override the default Alphabet letters font and use the
 same for the indexes printed on the outer disk:
@@ -61,6 +79,36 @@ printed and pinned through the middle hole.
 ![](./assets/caesar_disk_outer.png)
 
 ![](./assets/caesar_disk_inner.png)
+
+In case you didn't notice, in `v1.2` I added the possibility of genearing
+**Dual Wheels**. Basically, the same two disks but each containing two
+rows of characters, the outer row contains letters (a language alphabet),
+and the inner row of the disk containing symbols. Instead of assembling
+2 disks you only need one! But this only works when your symbol alphabet
+has the **same** length as the letter/language alphabet. At present, it
+is supported by the default English & Spanish (`-ES`):
+
+> caesardisk -title "Spanish" -dual -ES
+> caesardisk -title "English" -dual
+
+which results in two disk images that, when assembled together with a pin
+yields this with the inner disk rotated to `Key=03` (or "D" in this alphabet):
+
+![](./assets/caesar_disk_dual_ES.png)
+
+For the *dual Spanish disk* the standard `-ES` alphabet is stripped of the
+accented vowels, they are usually not part of passwords anyway:
+
+```
+Spanish (-ES):
+  Size: 27 characters
+  Letter alphabet: ABCDEFGHIJKLMNÑOPQRSTUVWXYZ
+  Symbol alphabet: !"#$%&()*+,-./ 0123456789=?
+English:
+  Size: 26 characters
+  Letter alphabet: ABCDEFGHIJKLMNOPQRSTUVWXYZ
+  Symbol alphabet: !"#$%&()*+,-./ 0123456789? 
+```
 
 # Doing the Caesar Thing
 
@@ -175,6 +223,10 @@ the *Secondary/Auxillary* alphabet
 
 ## Primary & Secondary with the same length
 
+First of all, this is more practical, though the other is slightly
+harder to break. For this use the `-dual` CLI option with either
+the default *English* (ASCII) or *Spanish* alphabets.
+
 This would be optimal because then you can use the same key
 (shift value) in **both** disks. Consider this case:
 
@@ -208,3 +260,8 @@ same lengths.
     Plain          : AKZ$12
     Encoded        : MWL
 ```    
+
+Try to decipher this with `-ES -dual`:
+
+> Pmv-Imoa-mc-qeb-Qmb-Ofkdp
+

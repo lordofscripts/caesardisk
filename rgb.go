@@ -13,6 +13,8 @@ import (
 )
 
 var Yellow = NewRGBA[uint8](0xff, 0xfd, 0x01, 0xFF)
+var Gray = NewRGBA[uint8](0xd3, 0xd3, 0xd3, 0xFF)
+var MidGray = NewRGBA[uint8](0x66, 0x6a, 0x6d, 0xFF)
 
 /* ----------------------------------------------------------------
  *				P u b l i c		T y p e s
@@ -69,6 +71,23 @@ func NewRGBFromString(colorHex string) RGB[uint8] {
 /* ----------------------------------------------------------------
  *				P u b l i c		M e t h o d s
  *-----------------------------------------------------------------*/
+
+func (r RGB[T]) ToHexColor() string {
+	var paint string
+	switch any(r.Alpha).(type) {
+	case float64:
+		red, _ := any(r.Red).(float64)
+		green := any(r.Green).(float64)
+		blue := any(r.Blue).(float64)
+		paint = fmt.Sprintf("#%02x%02x%02x", uint8(red*255), uint8(green*255), uint8(blue*255))
+	case uint8:
+		red, _ := any(r.Red).(uint8)
+		green := any(r.Green).(uint8)
+		blue := any(r.Blue).(uint8)
+		paint = fmt.Sprintf("#%02x%02x%02x", red, green, blue)
+	}
+	return paint
+}
 
 // convert to a Go color from the standard library
 func (r RGB[T]) ToColor() color.Color {
