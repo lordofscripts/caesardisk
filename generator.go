@@ -13,8 +13,10 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/png"
 	"log"
 	"math"
+	"os"
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
@@ -53,6 +55,11 @@ const (
 	SubTitle string = "C a e s a r  D i s k"
 )
 
+const (
+	percentSingleDiskIndex float64 = 0.70 // % of radius at which we draw Shift value
+	percentDualDiskIndex   float64 = 0.55 // % of radius at which we draw Shift value
+)
+
 // Default Free embedded font(s)
 //
 //go:embed ubuntu.regular.ttf
@@ -73,6 +80,7 @@ var DefaultCaesarWheelOptions = CaesarWheelOptions{
 	LettersFontPath: "ubuntu.bold.ttf",
 	LettersSize:     30.0,
 	LetterColor:     NewRGB[uint8](0, 0, 0),
+	LetterColorAlt:  NewRGB[uint8](0, 0, 0),
 	DigitsFontPath:  "ubuntu.regular.ttf",
 	DigitsSize:      18.0,
 	DigitsColor:     NewRGB[uint8](0x00, 0x00, 0xff), //NewRGB[uint8](0xff, 0xa5, 0x00),
@@ -96,6 +104,7 @@ type CaesarWheelOptions struct {
 	LettersFontPath string
 	LettersSize     float64
 	LetterColor     RGB[uint8]
+	LetterColorAlt  RGB[uint8]
 	DigitsFontPath  string
 	DigitsSize      float64
 	DigitsColor     RGB[uint8]
@@ -152,6 +161,71 @@ func loadFont(fontPath string, size float64) font.Face {
 
 }
 
+// loads a (base) image
+func loadImage(path string) (image.Image, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	img, err := png.Decode(file)
+
+	return img, err
+}
+
+// Superimpose the two disks and rotate the inner disk image by the Caesar
+// shift value (0..N-1) where N is the length of the chosen alphabet,
+// i.e. the number of segments in the Caesar wheel.
+func SuperimposeDisksByShift(shift, n int, outerFilename, innerFilename, outputFilename string, opts CaesarWheelOptions) error {
+	width := opts.Size.Dx()
+	height := opts.Size.Dy()
+	angle := (float64(shift) / float64(n)) * 2 * math.Pi
+
+	dc := gg.NewContext(width, height)
+	// the bigger (outer) disk is the background
+	baseImg, err := loadImage(outerFilename)
+	if err != nil {
+		return err
+	}
+	dc.DrawImage(baseImg, 0, 0)
+
+	// the inner (smaller) disk is then superimposed
+	overlayImg, err := loadImage(innerFilename)
+	if err != nil {
+		return err
+	}
+
+	if angle == 0 {
+		dc.DrawImage(overlayImg, 0, 0) // overlay has the same size
+	} else {
+		dc.Push() // save the current state of our image context
+		// set the center of the overlay
+		var overlayX, overlayY float64
+		overlayX, overlayY = float64(width/2.0), float64(height/2.0)
+
+		// move the context to the rotation point
+		dc.Translate(overlayX, overlayY)
+		// rotate it the specified amount of radians
+		//angle := gg.Radians(degreeRotation)
+		dc.Rotate(angle)
+		// draw the rotated overlay image centered at 0,0
+		dc.DrawImage(overlayImg, -overlayImg.Bounds().Dx()/2, -overlayImg.Bounds().Dy()/2)
+		// restore the context
+		dc.Pop()
+	}
+
+	// -- Draw Shift Value on the superimposed disk
+	font := loadFont(opts.DigitsFontPath, opts.DigitsSize)
+	// Calculate the middle angle for text  placement
+	startAngle := (float64(shift) / float64(n)) * 2 * math.Pi
+	midAngle := startAngle + (math.Pi / float64(n))
+
+	drawShiftValue(shift, n, opts.Radius*percentDualDiskIndex, midAngle, font, opts, dc)
+
+	err = dc.SavePNG(outputFilename)
+	return err
+}
+
 // Draw a text in a semicircle (arc)
 func drawArcText(arcText string, fgColor color.Color, fontSize, width, height, radius float64, onLeft bool, fontPath string, dc *gg.Context) {
 	// Calculate the arc text position
@@ -182,12 +256,36 @@ func drawArcText(arcText string, fgColor color.Color, fontSize, width, height, r
 	}
 }
 
+func drawShiftValue(shift, N int, radius, midAngle float64, font font.Face, opts CaesarWheelOptions, dc *gg.Context) {
+	x := float64(opts.Size.Dx() / 2)
+	y := float64(opts.Size.Dy() / 2)
+
+	angle := math.Pi*2*float64(shift)/float64(N) + math.Pi/float64(N)
+	if opts.Orthogonal {
+		angle = angle + math.Pi/2 // read at XII
+	}
+
+	// Calculate index position (mid-radius, mid-angle)
+	digitsX := x + radius*math.Cos(midAngle)
+	digitsY := y + radius*math.Sin(midAngle)
+
+	labelShiftValue := fmt.Sprintf("%02d", shift)
+	dc.SetFontFace(font)
+	dc.SetRGB255(int(opts.DigitsColor.Red), int(opts.DigitsColor.Green), int(opts.DigitsColor.Blue))
+
+	dc.Push()
+	dc.Translate(digitsX, digitsY)
+	dc.Rotate(angle)
+	dc.DrawStringAnchored(labelShiftValue, 0, 0, 0.5, 0.5)
+	dc.Pop()
+}
+
 func GenerateDualCaesarWheel(letters, symbols string, filename string, inner bool, opts CaesarWheelOptions) error {
-	sizeLet := utf8.RuneCountInString(letters)
-	sizeSym := utf8.RuneCountInString(symbols)
-	if sizeLet != sizeSym {
-		println("LET", sizeLet, letters)
-		println("SYM", sizeSym, symbols)
+	countLet := utf8.RuneCountInString(letters)
+	countSym := utf8.RuneCountInString(symbols)
+	if countLet != countSym {
+		println("LET", countLet, letters)
+		println("SYM", countSym, symbols)
 		return ErrUnmatchedDual
 	}
 
@@ -197,7 +295,7 @@ func GenerateDualCaesarWheel(letters, symbols string, filename string, inner boo
 		Edge:        opts.Radius,
 		First:       opts.Radius * 0.95, // at 90% (0.90) place the character
 		Second:      opts.Radius * 0.85,
-		Shift:       opts.Radius * 0.55, // place digits 70% of the way to the edge
+		Shift:       opts.Radius * percentDualDiskIndex, // place digits 70% of the way to the edge
 		ArcLabelPos: opts.Radius * 0.55,
 	}
 	// for inner disk, contains 2 cipher alphabets but only cut-out for digits
@@ -242,12 +340,12 @@ func GenerateDualCaesarWheel(letters, symbols string, filename string, inner boo
 	// III. Draw the N dividing lines and characters
 	letterLabel := []rune(letters) // each letter MAY be a multi-byte rune
 	symbolLabel := []rune(symbols)
-	for i := range sizeLet { // the length in Unicode chars rather than bytes
+	for i := range countLet { // the length in Unicode chars rather than bytes
 		// Calculate the start and end angles for the segment
-		startAngle := (float64(i) / float64(sizeLet)) * 2 * math.Pi
+		startAngle := (float64(i) / float64(countLet)) * 2 * math.Pi
 		//endAngle := (float64(i+1) / float64(sizeLet)) * 2 * math.Pi
 		// Calculate the middle angle for text  placement
-		midAngle := startAngle + (math.Pi / float64(sizeLet)) // use pi/N for half a segment angle
+		midAngle := startAngle + (math.Pi / float64(countLet)) // use pi/N for half a segment angle
 		// Calculate the end point of the line on the circle's edge
 		endX := x + ringDualOut.Edge*math.Cos(startAngle)
 		endY := y + ringDualOut.Edge*math.Sin(startAngle)
@@ -261,7 +359,7 @@ func GenerateDualCaesarWheel(letters, symbols string, filename string, inner boo
 
 		// -- Calculate the letter's baseline angle so that it is perpendicular to
 		// the radius. First calculation is letter's side edge parallel to the circle's tangent
-		angle := math.Pi*2*float64(i)/float64(sizeLet) + math.Pi/float64(sizeLet)
+		angle := math.Pi*2*float64(i)/float64(countLet) + math.Pi/float64(countLet)
 		if opts.Orthogonal {
 			angle = angle + math.Pi/2 // read at XII
 		} // else read at III
@@ -285,12 +383,12 @@ func GenerateDualCaesarWheel(letters, symbols string, filename string, inner boo
 			}
 
 			// The Inner disk contains the CIPHERed character(s)
-			drawInnerChar(ringDualIn.First, labelLetter, opts.LetterColor.ToHexColor())
+			drawInnerChar(ringDualIn.First, labelLetter, opts.LetterColorAlt.ToHexColor())
 			drawInnerChar(ringDualIn.Second, labelSymbol, MidGray.ToHexColor())
 
 			// Draw the cut-out that would allow to see-through to
 			// the key/index printed in the disc underneath (outer)
-			endAngle := (float64(1) / float64(sizeLet)) * 2 * math.Pi
+			endAngle := (float64(1) / float64(countLet)) * 2 * math.Pi
 			dc.SetLineWidth(0.75)
 			dc.SetRGB(0.827, 0.827, 0.827)
 			dc.DrawArc(x, y, ringDualOut.Shift+opts.DigitsSize-2, 0, endAngle)
@@ -377,14 +475,14 @@ func GenerateDualCaesarWheel(letters, symbols string, filename string, inner boo
 		return fmt.Errorf("failed to save image: %w", err)
 	}
 
-	fmt.Printf("successfully generated '%s' with %d segments\n", filename, sizeLet)
+	fmt.Printf("successfully generated '%s' with %d segments\n", filename, countLet)
 	return nil
 }
 
 // generate an image with a Caesar encoder wheel that could be printed
 func GenerateCaesarWheel(letters string, filename string, inner bool, opts CaesarWheelOptions) error {
 	// at 75% (0.75) place the 2-digit offset
-	var indexRadius = opts.Radius * 0.70 // place digits 70% of the way to the edge
+	var indexRadius = opts.Radius * percentSingleDiskIndex // place digits 70% of the way to the edge
 	// at 90% (0.90) place the character, thus nearest the edge of the circle
 	var textRadius = opts.Radius * 0.95
 
@@ -486,7 +584,7 @@ func GenerateCaesarWheel(letters string, filename string, inner bool, opts Caesa
 
 			textAltX := x + textAltRadius*math.Cos(midAngle)
 			textAltY := y + textAltRadius*math.Sin(midAngle)
-			dc.SetColor(opts.LetterColor.ToColor())
+			dc.SetColor(opts.LetterColorAlt.ToColor())
 			dc.Push()
 			dc.Translate(textAltX, textAltY)
 			dc.Rotate(angle)

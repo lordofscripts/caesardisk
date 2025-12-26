@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/lordofscripts/caesardisk"
 )
@@ -79,6 +80,7 @@ func main() {
 	// I. Command-line flag definition and parsing
 	var flgHelp, flgES, flgRU, flgPT, flgDE, flgGR, flgIT, flgCZ, flgPunct, flgDual bool
 	var flgTextFontPath, flgDigitFontPath, flgAlphabet, flgTitle string
+	var flgAssemble int
 	flag.Usage = Usage
 	flag.BoolVar(&flgHelp, "help", false, "This help")
 	// 1.1 flags for supported preset languages
@@ -98,6 +100,7 @@ func main() {
 	flag.StringVar(&flgTitle, "title", "", "Title (usually disk language or ID)")
 	flag.StringVar(&flgTextFontPath, "text-font", "", "Text font path")
 	flag.StringVar(&flgDigitFontPath, "digit-font", "", "Digit font path (else use same text font)")
+	flag.IntVar(&flgAssemble, "assemble", -1, "when set also output a final disk with key N")
 	flag.Parse()
 
 	// II. Command-line flag validation and processing
@@ -107,6 +110,8 @@ func main() {
 		flag.Usage()
 	} else {
 		var Options caesardisk.CaesarWheelOptions = caesardisk.DefaultCaesarWheelOptions
+		Options.LetterColorAlt = caesardisk.NewRGBFromString("#c13e93") // for inner
+
 		if len(flgDigitFontPath) != 0 {
 			Options.DigitsFontPath = flgDigitFontPath
 		}
@@ -239,6 +244,29 @@ func main() {
 		// the filename is in base form
 		generateWheel(alphabetLet, "caesar_disk", false, flgDual, Options)
 		generateWheel(alphabetLet, "caesar_disk", true, flgDual, Options)
+
+		// -assemble
+		if flgAssemble > -1 {
+			// how many unicode characters in the chosen alphabet
+			maxKey := utf8.RuneCountInString(alphabetLet)
+			// adjust the shift if necessary, 0..N-1
+			shift := flgAssemble % maxKey
+			outerDiskFile := generateFilename("caesar_disk", false, langSuffix)
+			innerDiskFile := generateFilename("caesar_disk", true, langSuffix)
+			finalFile := "caesar_disk_" + langSuffix + "_final.png"
+			err := caesardisk.SuperimposeDisksByShift(
+				shift, maxKey,
+				outerDiskFile,
+				innerDiskFile,
+				finalFile,
+				Options)
+			if err != nil {
+				println("WARNING", err)
+			} else {
+				fmt.Printf("successfully generated '%s' with Caesar shift %d: ", finalFile, shift)
+			}
+		}
+
 		fmt.Print(Options)
 		fmt.Printf("%15s: %s\n", "Alphabet", alphabetLet)
 		if flgDual {
