@@ -111,6 +111,7 @@ func main() {
 	} else {
 		var Options caesardisk.CaesarWheelOptions = caesardisk.DefaultCaesarWheelOptions
 		Options.LetterColorAlt = caesardisk.NewRGBFromString("#c13e93") // for inner
+		Options.DigitsSize += 2.0
 
 		if len(flgDigitFontPath) != 0 {
 			Options.DigitsFontPath = flgDigitFontPath
@@ -267,7 +268,7 @@ func main() {
 			}
 		}
 
-		fmt.Print(Options)
+		fmt.Print('\n', Options)
 		fmt.Printf("%15s: %s\n", "Alphabet", alphabetLet)
 		if flgDual {
 			fmt.Printf("%15s: %s\n", "Symbols ", alphabetPun)

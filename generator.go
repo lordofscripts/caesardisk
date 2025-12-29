@@ -173,6 +173,14 @@ func loadImage(path string) (image.Image, error) {
 	return img, err
 }
 
+func getIndexFor(i, N int) int {
+	result := 0
+	if i != 0 {
+		result = N - i
+	}
+	return result
+}
+
 // Superimpose the two disks and rotate the inner disk image by the Caesar
 // shift value (0..N-1) where N is the length of the chosen alphabet,
 // i.e. the number of segments in the Caesar wheel.
@@ -207,7 +215,7 @@ func SuperimposeDisksByShift(shift, n int, outerFilename, innerFilename, outputF
 		dc.Translate(overlayX, overlayY)
 		// rotate it the specified amount of radians
 		//angle := gg.Radians(degreeRotation)
-		dc.Rotate(angle)
+		dc.Rotate(-angle)
 		// draw the rotated overlay image centered at 0,0
 		dc.DrawImage(overlayImg, -overlayImg.Bounds().Dx()/2, -overlayImg.Bounds().Dy()/2)
 		// restore the context
@@ -216,11 +224,10 @@ func SuperimposeDisksByShift(shift, n int, outerFilename, innerFilename, outputF
 
 	// -- Draw Shift Value on the superimposed disk
 	font := loadFont(opts.DigitsFontPath, opts.DigitsSize)
-	// Calculate the middle angle for text  placement
-	startAngle := (float64(shift) / float64(n)) * 2 * math.Pi
-	midAngle := startAngle + (math.Pi / float64(n))
 
-	drawShiftValue(shift, n, opts.Radius*percentDualDiskIndex, midAngle, font, opts, dc)
+	// inner disk is rotated to the LEFT
+	const INNER_ROTATE_LEFT = true
+	drawShiftValue(shift, n, opts.Radius*percentDualDiskIndex, INNER_ROTATE_LEFT, font, opts, dc)
 
 	err = dc.SavePNG(outputFilename)
 	return err
@@ -256,13 +263,25 @@ func drawArcText(arcText string, fgColor color.Color, fontSize, width, height, r
 	}
 }
 
-func drawShiftValue(shift, N int, radius, midAngle float64, font font.Face, opts CaesarWheelOptions, dc *gg.Context) {
+func drawShiftValue(shift, N int, radius float64, leftRotation bool, font font.Face, opts CaesarWheelOptions, dc *gg.Context) {
 	x := float64(opts.Size.Dx() / 2)
 	y := float64(opts.Size.Dy() / 2)
 
-	angle := math.Pi*2*float64(shift)/float64(N) + math.Pi/float64(N)
+	// Calculate the middle angle for text  placement
+	var midAngle float64 = 0.0
+
+	// Calculate text (shift value) rotation angle
+	angle := math.Pi*2*float64(-shift)/float64(N) + math.Pi/float64(N)
 	if opts.Orthogonal {
 		angle = angle + math.Pi/2 // read at XII
+	}
+	if leftRotation {
+		startAngle := (float64(shift-1) / float64(N)) * 2 * math.Pi
+		midAngle = -1 * (startAngle + (math.Pi / float64(N)))
+	} else {
+		startAngle := (float64(shift) / float64(N)) * 2 * math.Pi
+		midAngle = startAngle + (math.Pi / float64(N))
+		angle -= gg.Radians(-90.0)
 	}
 
 	// Calculate index position (mid-radius, mid-angle)
@@ -423,7 +442,7 @@ func GenerateDualCaesarWheel(letters, symbols string, filename string, inner boo
 			digitsX := x + ringDualOut.Shift*math.Cos(midAngle)
 			digitsY := y + ringDualOut.Shift*math.Sin(midAngle)
 
-			labelShiftValue := fmt.Sprintf("%02d", i)
+			labelShiftValue := fmt.Sprintf("%02d", getIndexFor(i, countLet))
 			dc.SetFontFace(shiftFace) // set different font face or size
 			dc.SetRGB255(int(opts.DigitsColor.Red), int(opts.DigitsColor.Green), int(opts.DigitsColor.Blue))
 
@@ -570,7 +589,7 @@ func GenerateCaesarWheel(letters string, filename string, inner bool, opts Caesa
 			digitsX := x + indexRadius*math.Cos(midAngle)
 			digitsY := y + indexRadius*math.Sin(midAngle)
 
-			indexLabel := fmt.Sprintf("%02d", i)
+			indexLabel := fmt.Sprintf("%02d", n-i-1)
 			dc.SetFontFace(counterFace) // set different font face or size
 			dc.SetRGB255(int(opts.DigitsColor.Red), int(opts.DigitsColor.Green), int(opts.DigitsColor.Blue))
 
