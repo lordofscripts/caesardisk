@@ -39,16 +39,22 @@ EXEC_CAESAR=caesardisk
 MAIN_CAESAR=cmd/disk/*.go
 BIN_OUT_1=$(GO_PROJ_BIN)/$(EXEC_CAESAR)$(EXE_EXT)
 
+EXEC_GUI=caesar-gui
+MAIN_GUI=cmd/gui/*.go
+BIN_OUT_2=$(GO_PROJ_BIN)/$(EXEC_GUI)$(EXE_EXT)
+
 # - Main Targets
 .PHONY: clean build
 
-all: caesardisk
+all: caesardisk ui
 	
 allwin:
 	GOOS=windows GOARCH=amd64 GOWORK=off $(GO) build $(GO_TAGS) $(GOFLAGS) -o ${BIN_OUT_1}.exe ${MAIN_CAESAR}
+	GOOS=windows GOARCH=amd64 GOWORK=off $(GO) build $(GO_TAGS) $(GOFLAGS) -o ${BIN_OUT_2}.exe ${MAIN_GUI}
 
 release:
 	strip --strip-unneeded ${BIN_OUT_1}
+	strip --strip-unneeded ${BIN_OUT_2}
 
 version:
 	@echo $(PKG_FULL_VERSION)
@@ -60,6 +66,9 @@ proxy:
 
 caesardisk:
 	$(GO) build $(GO_TAGS) $(GOFLAGS) -o ${BIN_OUT_1} ${MAIN_CAESAR}
+
+ui:
+	$(GO) build $(GO_TAGS) $(GOFLAGS) -o ${BIN_OUT_2} ${MAIN_GUI}
 
 # - Secondary Targets
 

@@ -260,6 +260,7 @@ func main() {
 				outerDiskFile,
 				innerDiskFile,
 				finalFile,
+				flgDual,
 				Options)
 			if err != nil {
 				println("WARNING", err)

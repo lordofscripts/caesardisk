@@ -51,7 +51,15 @@ your own disk sets for yourself, family or friends:
 
 > go get github.com/lordofscripts/caesardisk/cmd/disk
 
+And the graphical front-end application: 
+
+> go get github.com/lordofscripts/caesardisk/cmd/gui
+
 ### Command Usage
+
+For the [Graphical Front-end](./README_GUI.md) simply type:
+
+> caesar-gui
 
 To generate the English disks using the default fonts:
 
