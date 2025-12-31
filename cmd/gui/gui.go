@@ -125,14 +125,14 @@ func guiBuildMainTab() *container.TabItem {
 	actionEncodeButton := widget.NewButton("Encode", func() {
 		var encoded string
 		var err error = nil
-		engine := cipher.NewCaesarCipher()
+		engine := cipher.NewCaesarCipher(CaesarParams)
 		if usePDU, _ := optionUsePDU.Get(); usePDU {
-			encoded, err = engine.EncodeMessage(textEntry1.Text, CaesarParams)
+			encoded, err = engine.EncodeMessage(textEntry1.Text)
 			if err != nil {
 				log.Print(err)
 			}
 		} else {
-			encoded = engine.Encode(textEntry1.Text, CaesarParams)
+			encoded = engine.Encode(textEntry1.Text)
 		}
 
 		textEntry2.SetText(encoded)
@@ -142,14 +142,14 @@ func guiBuildMainTab() *container.TabItem {
 	actionDecodeButton := widget.NewButton("Decode", func() {
 		var decoded string
 		var err error = nil
-		engine := cipher.NewCaesarCipher()
+		engine := cipher.NewCaesarCipher(CaesarParams)
 		if usePDU, _ := optionUsePDU.Get(); usePDU {
-			decoded, err = engine.DecodeMessage(textEntry1.Text, CaesarParams)
+			decoded, err = engine.DecodeMessage(textEntry1.Text)
 			if err != nil {
 				log.Print(err)
 			}
 		} else {
-			decoded = engine.Decode(textEntry1.Text, CaesarParams)
+			decoded = engine.Decode(textEntry1.Text)
 		}
 
 		textEntry2.SetText(decoded)

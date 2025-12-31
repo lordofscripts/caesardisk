@@ -9,6 +9,7 @@
 package cipher
 
 import (
+	"fmt"
 	"log"
 	"slices"
 	"strings"
@@ -28,11 +29,20 @@ var hashSeed uint64 = 0xDEADBEA7
  *				I n t e r f a c e s
  *-----------------------------------------------------------------*/
 
+// An interface for all text/cipher transforms
+type ITranscoder interface {
+	Encode(string) string
+	Decode(string) string
+}
+
+var _ ITranscoder = (*Caesar)(nil)
+
 /* ----------------------------------------------------------------
  *				P u b l i c		T y p e s
  *-----------------------------------------------------------------*/
 
 type Caesar struct {
+	params *CaesarParameters
 }
 
 /* ----------------------------------------------------------------
@@ -44,20 +54,28 @@ type Caesar struct {
  *-----------------------------------------------------------------*/
 
 // (ctor) new instance of plain Caesar cipher
-func NewCaesarCipher() *Caesar {
-	return &Caesar{}
+func NewCaesarCipher(config *CaesarParameters) *Caesar {
+	return &Caesar{
+		params: config,
+	}
 }
 
 /* ----------------------------------------------------------------
  *				P u b l i c		M e t h o d s
  *-----------------------------------------------------------------*/
 
+// implements fmt.Stringer and returns algorithm parameters
+func (c *Caesar) String() string {
+	keyL, _ := c.params.Alphabet.Character(c.params.KeyValue)
+	return fmt.Sprintf("Caesar(%c|%d)", keyL, c.params.KeyValue)
+}
+
 // encode a message and package it in a "standard" form. The
 // standard PDU format is {TIMESTAMP}{CHECKSUM}{PAYLOAD} where
 // Payload is the encrypted message string, Checksum is the checksum
 // over the payload, and Timestamp is the the form YYYYMMDDTHHMMSS
-func (c *Caesar) EncodeMessage(plain string, params *CaesarParameters) (string, error) {
-	payload := c.Encode(plain, params)
+func (c *Caesar) EncodeMessage(plain string) (string, error) {
+	payload := c.Encode(plain)
 	msgPDU := NewCaesarMessage(hash.NewXXH64(hashSeed))
 	msgPDU.AddMessage(payload)
 
@@ -65,24 +83,24 @@ func (c *Caesar) EncodeMessage(plain string, params *CaesarParameters) (string, 
 }
 
 // decode a message that is in "standard" format
-func (c *Caesar) DecodeMessage(cipheredMessage string, params *CaesarParameters) (string, error) {
+func (c *Caesar) DecodeMessage(cipheredMessage string) (string, error) {
 	check := hash.NewXXH64(hashSeed)
 	if payload, err := VerifyCaesarMessage(check, cipheredMessage); err != nil {
 		return "", err
 	} else {
-		return c.Decode(payload, params), nil
+		return c.Decode(payload), nil
 	}
 }
 
-func (c *Caesar) Encode(plain string, params *CaesarParameters) string {
+func (c *Caesar) Encode(plain string) string {
 	var result strings.Builder
-	var alphabet string = params.Alphabet.String()
+	var alphabet string = c.params.Alphabet.String()
 	var shift int
 	tokens := []rune(alphabet)
-	shift = params.KeyValue
+	shift = c.params.KeyValue
 
-	if len(tokens) < params.KeyValue-1 {
-		log.Printf("wrapping key '%d' of alphabet length %d", params.KeyValue, len(tokens))
+	if len(tokens) < c.params.KeyValue-1 {
+		log.Printf("wrapping key '%d' of alphabet length %d", c.params.KeyValue, len(tokens))
 		shift %= len(tokens)
 	}
 
@@ -112,15 +130,15 @@ func (c *Caesar) Encode(plain string, params *CaesarParameters) string {
 	return result.String()
 }
 
-func (c *Caesar) Decode(ciphered string, params *CaesarParameters) string {
+func (c *Caesar) Decode(ciphered string) string {
 	var result strings.Builder
-	var alphabet string = params.Alphabet.String()
+	var alphabet string = c.params.Alphabet.String()
 	var shift int
 
 	tokens := []rune(alphabet)
-	shift = params.KeyValue
-	if len(tokens) < params.KeyValue-1 {
-		log.Printf("wrapping key '%d' of alphabet length %d", params.KeyValue, len(tokens))
+	shift = c.params.KeyValue
+	if len(tokens) < c.params.KeyValue-1 {
+		log.Printf("wrapping key '%d' of alphabet length %d", c.params.KeyValue, len(tokens))
 		shift %= len(tokens)
 	}
 
