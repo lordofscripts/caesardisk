@@ -18,7 +18,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strings"
 	"unicode/utf8"
 
 	"github.com/fogleman/gg"
@@ -30,61 +29,26 @@ import (
  *-----------------------------------------------------------------*/
 
 const (
-	// Keep this in mind if you want an dual letter & symbol
-	// disks that you can use with the same encoding key
-	// (same length for both alphabets)
-	// 0        1         2         3
-	// 1234567890123456789012345678901
-	// -------------------------------
-	// ABCDEFGHIJKLMNÑOPQRSTUVWXYZÁÉÍÓÚ
-	// !"#$%&'()*+,-./ 0123456789:;<=>?
-	Alpha_EN string = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	Alpha_ES string = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZÁÉÍÓÚ"
-	Alpha_CZ string = "ABCČDĎEFGHIJKLMNŇOPQRŘSŠTŤUVWXYÝZŽÁÉÍÓÚĚŮ"
-	Alpha_DE string = "ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜẞ"
-	Alpha_IT string = "ABCDEFGHILMNOPQRSTUVZÉÓÀÈÌÒÙ"
-	Alpha_PT string = "ABCÇDEFGHIJKLMNOPQRSTUVWXYZÁÉÍÓÚÀÂÊÔÃÕ"
-	Alpha_GR string = "ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ"
-	Alpha_RU string = "АБВГДЕËЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
-	Alpha_PU string = `!"#$%&'()*+,-./ 0123456789:;<=>?`
-
-	Alpha_ES_DUAL    = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"
-	Alpha_PU_DUAL_ES = `!"#$%&()*+,-./ 0123456789=?` // to match length of ES_DUAL
-	Alpha_PU_DUAL_EN = `!"#$%&()*+,-./ 0123456789?`  // to match length of EN
-
 	SubTitle string = "C a e s a r  D i s k"
 )
 
 const (
 	percentSingleDiskIndex float64 = 0.70 // % of radius at which we draw Shift value
 	percentDualDiskIndex   float64 = 0.55 // % of radius at which we draw Shift value
+
+	DEFAULT_FONT_REGULAR = "ubuntu.regular.ttf"
+	DEFAULT_FONT_BOLD    = "ubuntu.bold.ttf"
 )
 
-// Default Free embedded font(s)
+// Default Free embedded font(s). See DEFAULT_FONT_REGULAR
 //
 //go:embed ubuntu.regular.ttf
 var fontUbuntuRegular embed.FS
 
-// Default Free embedded font(s)
+// Default Free embedded font(s). See DEFAULT_FONT_BOLD
 //
 //go:embed ubuntu.bold.ttf
 var fontUbuntuBold embed.FS
-
-// Default rendering options for the Caesar Wheel
-var DefaultCaesarWheelOptions = CaesarWheelOptions{
-	Title:           "",
-	Size:            image.Rect(0, 0, 800, 800),
-	Radius:          360.0, // Must be less than half the size (less than the diameter/2)
-	Orthogonal:      true,
-	RadialsColor:    NewRGB[uint8](0xd3, 0xd3, 0xd3), // #d3d3d3
-	LettersFontPath: "ubuntu.bold.ttf",
-	LettersSize:     30.0,
-	LetterColor:     NewRGB[uint8](0, 0, 0),
-	LetterColorAlt:  NewRGB[uint8](0, 0, 0),
-	DigitsFontPath:  "ubuntu.regular.ttf",
-	DigitsSize:      18.0,
-	DigitsColor:     NewRGB[uint8](0x00, 0x00, 0xff), //NewRGB[uint8](0xff, 0xa5, 0x00),
-}
 
 var (
 	ErrUnmatchedDual error = errors.New("for dual alphabet mode both alphabets must have equal lengths")
@@ -93,22 +57,6 @@ var (
 /* ----------------------------------------------------------------
  *				P u b l i c		T y p e s
  *-----------------------------------------------------------------*/
-
-// Rendering options for a Caesar encoder/decoder wheel
-type CaesarWheelOptions struct {
-	Title           string
-	Size            image.Rectangle
-	Radius          float64
-	Orthogonal      bool
-	RadialsColor    RGB[uint8]
-	LettersFontPath string
-	LettersSize     float64
-	LetterColor     RGB[uint8]
-	LetterColorAlt  RGB[uint8]
-	DigitsFontPath  string
-	DigitsSize      float64
-	DigitsColor     RGB[uint8]
-}
 
 /* ----------------------------------------------------------------
  *				P r i v a t e	T y p e s
@@ -131,20 +79,82 @@ type ringPositions struct {
  *				P u b l i c		M e t h o d s
  *-----------------------------------------------------------------*/
 
-// implements fmt.Stringer for the CaesarWheelOptions
-func (w CaesarWheelOptions) String() string {
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "%15s: %d x %d pixels\n", "Size", w.Size.Dx(), w.Size.Dy())
-	fmt.Fprintf(&sb, "%15s: %d pixels\n", "Radius", int(w.Radius))
-	fmt.Fprintf(&sb, "%15s: %s @ %.3f\n", "Text font", w.LettersFontPath, w.LettersSize)
-	fmt.Fprintf(&sb, "%15s: %s @ %.3f\n", "Digit font", w.DigitsFontPath, w.DigitsSize)
-	fmt.Fprintf(&sb, "%15s: %t\n", "Orthogonal", w.Orthogonal)
-	return sb.String()
-}
-
 /* ----------------------------------------------------------------
  *					F u n c t i o n s
  *-----------------------------------------------------------------*/
+
+// Generates a single-alphabet Caesar wheel (inner OR outer) and saves it to a file.
+func GenerateCaesarWheel(letters string, filename string, inner bool, opts CaesarWheelOptions) error {
+	dc, err := generateCaesarWheel(letters, inner, opts)
+	if err == nil {
+		if err = dc.SavePNG(filename); err == nil { // or use SaveJPG
+			fmt.Printf("successfully generated '%s'\n", filename)
+		} else {
+			err = fmt.Errorf("failed to save image: %w", err)
+		}
+	}
+
+	return err
+}
+
+// Generates a single-alphabet Caesar wheel (inner OR outer) and returns the image object.
+func GenerateCaesarWheelImage(letters string, inner bool, opts CaesarWheelOptions) (image.Image, error) {
+	dc, err := generateCaesarWheel(letters, inner, opts)
+	if err == nil {
+		//dc.Rotate(gg.Radians(-90.0))
+		img := dc.Image()
+		return img, nil
+	}
+
+	return nil, err
+}
+
+// Superimpose two disks from a file into another saved to a file.
+func SuperimposeDisksByShift(shift, n int, outerFilename, innerFilename, outputFilename string, isDual bool, opts CaesarWheelOptions) error {
+	// the bigger (outer) disk is the background
+	baseImg, err := loadImage(outerFilename)
+	if err != nil {
+		return err
+	}
+
+	// the inner (smaller) disk is then superimposed
+	overlayImg, err := loadImage(innerFilename)
+	if err != nil {
+		return err
+	}
+
+	dc, err := superimposeDisksByShift(shift, n, baseImg, overlayImg, isDual, opts)
+	if err == nil {
+		err = dc.SavePNG(outputFilename)
+	}
+
+	return err
+}
+
+// Superimpose two disks from image objects and create a composite image.
+func SuperimposeDisksByShiftImage(shift, n int, outerImg, innerImg image.Image, isDual bool, opts CaesarWheelOptions) (image.Image, error) {
+	dc, err := superimposeDisksByShift(shift, n, outerImg, innerImg, isDual, opts)
+	if err == nil {
+		//rotateImage(dc, -90.0) not doing anything
+		img := dc.Image()
+		return img, nil
+	}
+
+	return nil, err
+}
+
+/* ----------------------------------------------------------------
+ *				P r i v a t e		F u n c t i o n s
+ *-----------------------------------------------------------------*/
+
+func rotateImage(dc *gg.Context, degrees float64) {
+	centerX := float64(dc.Width() / 2)
+	centerY := float64(dc.Height() / 2)
+	dc.Push()
+	dc.Translate(centerX, centerY)
+	dc.Rotate(gg.Radians(degrees))
+	dc.Pop()
+}
 
 // load a font given its path and set its size
 func loadFont(fontPath string, size float64) font.Face {
@@ -184,24 +194,13 @@ func getIndexFor(i, N int) int {
 // Superimpose the two disks and rotate the inner disk image by the Caesar
 // shift value (0..N-1) where N is the length of the chosen alphabet,
 // i.e. the number of segments in the Caesar wheel.
-func SuperimposeDisksByShift(shift, n int, outerFilename, innerFilename, outputFilename string, opts CaesarWheelOptions) error {
+func superimposeDisksByShift(shift, n int, baseImg, overlayImg image.Image, isDual bool, opts CaesarWheelOptions) (*gg.Context, error) {
 	width := opts.Size.Dx()
 	height := opts.Size.Dy()
 	angle := (float64(shift) / float64(n)) * 2 * math.Pi
 
 	dc := gg.NewContext(width, height)
-	// the bigger (outer) disk is the background
-	baseImg, err := loadImage(outerFilename)
-	if err != nil {
-		return err
-	}
-	dc.DrawImage(baseImg, 0, 0)
-
-	// the inner (smaller) disk is then superimposed
-	overlayImg, err := loadImage(innerFilename)
-	if err != nil {
-		return err
-	}
+	dc.DrawImage(baseImg, 0, 0) // Outer disk is base/background
 
 	if angle == 0 {
 		dc.DrawImage(overlayImg, 0, 0) // overlay has the same size
@@ -227,10 +226,13 @@ func SuperimposeDisksByShift(shift, n int, outerFilename, innerFilename, outputF
 
 	// inner disk is rotated to the LEFT
 	const INNER_ROTATE_LEFT = true
-	drawShiftValue(shift, n, opts.Radius*percentDualDiskIndex, INNER_ROTATE_LEFT, font, opts, dc)
+	radius := opts.Radius * percentSingleDiskIndex
+	if isDual {
+		radius = opts.Radius * percentDualDiskIndex
+	}
+	drawShiftValue(shift, n, radius, INNER_ROTATE_LEFT, font, opts, dc)
 
-	err = dc.SavePNG(outputFilename)
-	return err
+	return dc, nil
 }
 
 // Draw a text in a semicircle (arc)
@@ -499,7 +501,7 @@ func GenerateDualCaesarWheel(letters, symbols string, filename string, inner boo
 }
 
 // generate an image with a Caesar encoder wheel that could be printed
-func GenerateCaesarWheel(letters string, filename string, inner bool, opts CaesarWheelOptions) error {
+func generateCaesarWheel(letters string, inner bool, opts CaesarWheelOptions) (*gg.Context, error) {
 	// at 75% (0.75) place the 2-digit offset
 	var indexRadius = opts.Radius * percentSingleDiskIndex // place digits 70% of the way to the edge
 	// at 90% (0.90) place the character, thus nearest the edge of the circle
@@ -621,7 +623,14 @@ func GenerateCaesarWheel(letters string, filename string, inner bool, opts Caesa
 			dc.Stroke()
 		}
 	}
-
+	/*
+		This is erasing the "Caesar Disk" Text, etc
+			const LETTER_A_ON_TOP = true
+			if LETTER_A_ON_TOP {
+				//rotateImage(dc, -90)
+				dc.Rotate(gg.Radians(-90))
+			}
+	*/
 	// Draw a black dot in the middle to aid in making the pinhole
 	const DOT_RADIUS = 3 // Middle dot radius in pixels
 	dc.SetRGB(0, 0, 0)   // Set the color to black
@@ -654,10 +663,5 @@ func GenerateCaesarWheel(letters string, filename string, inner bool, opts Caesa
 	basename := filepath.Base(opts.LettersFontPath)
 	dc.DrawStringAnchored(basename, float64(opts.Size.Dx())*0.80, float64(opts.Size.Dy()-20), 0.5, 0.5)
 
-	if err := dc.SavePNG(filename); err != nil { // or use SaveJPG
-		return fmt.Errorf("failed to save image: %w", err)
-	}
-
-	fmt.Printf("successfully generated '%s' with %d segments\n", filename, n)
-	return nil
+	return dc, nil
 }
