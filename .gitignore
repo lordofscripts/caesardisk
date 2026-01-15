@@ -35,3 +35,5 @@ docs/README-old.md
 tests/testdata/input_bin.*
 bin/caesardisk
 bin/gui
+docs/TODO.md
+go-caesardisk.code-workspace
