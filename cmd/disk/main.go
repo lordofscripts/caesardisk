@@ -11,11 +11,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"os"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/lordofscripts/caesardisk"
+	"github.com/lordofscripts/goapp/app"
 )
 
 /* ----------------------------------------------------------------
@@ -40,19 +40,6 @@ var (
 /* ----------------------------------------------------------------
  *					F u n c t i o n s
  *-----------------------------------------------------------------*/
-
-// Death of an application by outputting a good-bye and setting
-// the OS exit code. It is logged as fatal.
-func Die(message string, exitCode int) {
-	fmt.Println("\n", "\t💀 x 💀 x 💀\n\t", message, "\n\tExit code: ", exitCode)
-	os.Exit(exitCode)
-}
-
-// display the error and die with an exit code, logging it as Fatal.
-func DieWithError(err error, exitCode int) {
-	fmt.Println("\n", "\t💀 x 💀 x 💀\n\t", err.Error(), "\n\tExit code: ", exitCode)
-	os.Exit(exitCode)
-}
 
 func Usage() {
 	fmt.Println("Usage:")
@@ -201,7 +188,7 @@ func main() {
 		}
 
 		if flgDual && len(alphabetPun) == 0 {
-			DieWithError(ErrDualNotSupported, 1)
+			app.DieWithError(ErrDualNotSupported, 1)
 		}
 
 		if len(flgTitle) != 0 {
@@ -238,7 +225,7 @@ func main() {
 			}
 
 			if err != nil {
-				DieWithError(err, 2)
+				app.DieWithError(err, 2)
 			}
 		}
 
