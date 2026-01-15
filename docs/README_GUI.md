@@ -1,5 +1,5 @@
 # GoCaesarDisk GUI
-`Created: 27 Dec 2025`    `Updated: 30 Dec 2025`
+`Created: 27 Dec 2025`    `Updated: 15 Jan 2026`
 
 Yes, just for fun and as an educational project, I decided to add a simple
 Graphical User Interface command application to this `CaesarDisk` module.
@@ -20,6 +20,7 @@ The main application window is composed of two tabs described below:
 The `Options` tab allows you to configure the application for encoding
 and decoding text using an enhanced Caesar cipher.
 
+* Select the Caesar variant (mode)
 * Select the alphabet, i.e. the character set of the language in which
   you will exchange messages.
 * When selected, the label below will show you the entire character set 
@@ -41,35 +42,42 @@ and even Runes!
 This is where all the fun happens, encoding and decoding text. This
 main tab has several sections:
 
-* **A**: The main toolbar menu. Currently only File|Quit.
+* **A**: The main toolbar menu. Currently only File|Quit & Help|About.
 * **B**: The application tab (main & options) selector
 * **C**: The dynamic Caesar encoding wheel
-* **D**: The `Caesar Key` selection via the slider, its character
+* **D**: Info dashboard: on the left the selected *cipher mode* and
+  on the right whether it is displaying the Main or Alternate key. 
+  The right label is clickable if the Offset is being shown.
+* **E**: The `Main Caesar Key` selection via the slider, its character
   and numeric shift value equivalents are shown as you slide.
-* **E**: The input text, whether to *Encode* OR *Decode*
-* **F**: Actions buttons to *Encode, Exchange, Clear & Decode*
-* **G**: The output text after encoding or decoding.
+* **F**: The `Alternate Key Offset` is displayed only for Didimus & Primus
+  cipher modes. Otherwise it is hidden.
+* **G**: The *input text*, whether to *Encode* OR *Decode*
+* **H**: Actions buttons to *Encode, Exchange, Clear, Edit & Decode*
+* **I**: The *output text* after encoding or decoding.
 
 So, it is quite simple. Based on the language (source alphabet)
 you choose on the Options tab, you are able to encode or decode
 messages on this main tab.
 
-First you select the `Caesar Key` in **D**. You do that that by moving
+First you select the `Main Caesar Key` in **E**. You do that that by moving
 the slider left or right, from zero (0) up to the number of 
 characters in the chosen alphabet minus one. As you move the
 slider, the letter key is updated on the left side, and its
 numerical equivalent (`Caesar Shift`) is updated on the right.
 
 When you finish moving the slider, you enter the text to encode
-or decode in the **E** input text widget. The output of the
-actions will always be shown on the **G** text widget.
+or decode in the **G** input text widget. The output of the
+actions will always be shown on the **I** text widget.
 
-Once you have text in **E**, the Encode & Decode buttons will
+Once you have text in **G**, the Encode & Decode buttons will
 become activated. If you entered *Plain Text* then you should
-use the **Encode** button. If on the other hand your **E** input
+use the **Encode** button. If on the other hand your **G** input
 text is already *Caesar encoded*, you would use the **Decode**
 button. The **CLR** button clears both text fields and the button
 with the arrows exchanges the contents of both for your convenience.
+There is also an edit button that lets you edit the input text in
+a bigger window.
 
 ## PDU Format
 
