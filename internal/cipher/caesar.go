@@ -9,8 +9,6 @@
 package cipher
 
 import (
-	"fmt"
-	"log"
 	"slices"
 	"strings"
 	"unicode"
@@ -42,7 +40,7 @@ var _ ITranscoder = (*Caesar)(nil)
  *-----------------------------------------------------------------*/
 
 type Caesar struct {
-	params *CaesarParameters
+	sequencer IKeySequencer
 }
 
 /* ----------------------------------------------------------------
@@ -53,10 +51,58 @@ type Caesar struct {
  *				C o n s t r u c t o r s
  *-----------------------------------------------------------------*/
 
-// (ctor) new instance of plain Caesar cipher
+// (ctor) to create a Caesar substitution cipher handler from a
+// preset key sequencer that must have previously been validated.
+func NewCaesarCipherFromSequencer(seq IKeySequencer) *Caesar {
+	return &Caesar{
+		sequencer: seq,
+	}
+}
+
+// (ctor) new instance of plain Caesar cipher.
+// Caesar (plain) is a monoalphabetic substitution cipher.
+// Rot13 is nothing but Caesar with (main) key=13.
+// Note: the config.Offset is not used.
 func NewCaesarCipher(config *CaesarParameters) *Caesar {
 	return &Caesar{
-		params: config,
+		sequencer: NewCaesarSequencer(config),
+	}
+}
+
+// (ctor) new instance of Didimus cipher. Didimus is a
+// variant of Caesar that uses an offset over the main Caesar
+// key. Being a bi-alphabetic substitution cipher, it alternates
+// encoding using the main key for even characters and the
+// alternate key (main key + offset % ALPHA_LEN) for odd characters.
+// Note: the config.Offset is always used.
+func NewDidimusCipher(config *CaesarParameters) *Caesar {
+	return &Caesar{
+		sequencer: NewDidimusSequencer(config),
+	}
+}
+
+// (ctor) Fibonacci is a polyalphabetic substitution cipher based
+// on Caesar, but it uses a 10-term Fibonacci series to generate
+// alternate keys that are used for every other character.
+// Note: the config.Offset is not used.
+func NewFibonacciCipher(config *CaesarParameters) *Caesar {
+	return &Caesar{
+		sequencer: NewFibonacciSequencer(config),
+	}
+}
+
+// (ctor) Primus is a polyalphabetic substitution cipher based
+// on Caesar. It is similar to Fibonacci with two differences.
+// It uses (up to) the first 10 Prime numbers to generate the
+// alternate keys instead of a Fibonacci series. The Offset (0..10)
+// is used to determine how many prime numbers are used prior to
+// rewinding. In every iteration the first is the main Caesar key,
+// and the rest uses the main key plus the prime number modulo
+// length of the alphabet.
+// Note: the config.Offset is used.
+func NewPrimusCipher(config *CaesarParameters) *Caesar {
+	return &Caesar{
+		sequencer: NewPrimusSequencer(config),
 	}
 }
 
@@ -66,8 +112,7 @@ func NewCaesarCipher(config *CaesarParameters) *Caesar {
 
 // implements fmt.Stringer and returns algorithm parameters
 func (c *Caesar) String() string {
-	keyL, _ := c.params.Alphabet.Character(c.params.KeyValue)
-	return fmt.Sprintf("Caesar(%c|%d)", keyL, c.params.KeyValue)
+	return c.sequencer.String()
 }
 
 // encode a message and package it in a "standard" form. The
@@ -92,37 +137,53 @@ func (c *Caesar) DecodeMessage(cipheredMessage string) (string, error) {
 	}
 }
 
+// implements ITranscoder for encoding/encrypting a message using
+// the selected Caesar mode/variant (Caesar, Didimus, Fibonacci, Primus)
 func (c *Caesar) Encode(plain string) string {
 	var result strings.Builder
-	var alphabet string = c.params.Alphabet.String()
-	var shift int
-	tokens := []rune(alphabet)
-	shift = c.params.KeyValue
+	var alphabet string = c.sequencer.GetParams().Alphabet.String()
 
-	if len(tokens) < c.params.KeyValue-1 {
-		log.Printf("wrapping key '%d' of alphabet length %d", c.params.KeyValue, len(tokens))
-		shift %= len(tokens)
+	var tabulaIn []rune  // the plain-text alphabet tabula
+	var tabulaRaw string // the raw ciphered alphabet string
+	var tabulaOut []rune // the ciphered alphabet tabula
+	if !c.sequencer.IsPolyalphabetic() {
+		withKey := c.sequencer.GetParams().KeyValue
+		tabulaRaw = RotateStringLeft(alphabet, withKey)
+		tabulaOut = []rune(tabulaRaw)
 	}
+	// during encryption we map from tabulaIn to tabulaOut
+	tabulaIn = []rune(alphabet)
 
-	tabulaRaw := RotateStringLeft(alphabet, shift)
-	tabulaOut := []rune(tabulaRaw)
-
+	// · iterate through each of the plain-text Unicode characters in the input string
 	for _, plainRune := range []rune(plain) {
-		// the reference alphabet is Uppercase, input may be lowercase
+		// · Letter-case preservation
+		//   the reference alphabet is Uppercase, input may be lowercase
 		isLower := unicode.IsLower(plainRune)
 		if isLower {
 			plainRune = unicode.ToUpper(plainRune)
 		}
 
-		if at := slices.Index(tokens, plainRune); at != -1 {
+		if at := slices.Index(tabulaIn, plainRune); at != -1 {
+			// · The Unicode point CAN be encoded (present in alphabet)
+			//	 select the appropriate key & tabula for polialphabetic ciphers
+			withKey := c.sequencer.NextKey()
+			if c.sequencer.IsPolyalphabetic() {
+				tabulaRaw = RotateStringLeft(alphabet, withKey)
+				tabulaOut = []rune(tabulaRaw)
+			}
+
+			// · map from tabulaIn (withKey) to tabulaOut content
 			ciphered := tabulaOut[at]
-			// maintain case
+			// · preserve case on output
 			if isLower {
 				ciphered = unicode.ToLower(ciphered)
 			}
 
+			// · write the encrypted Unicode character
 			result.WriteRune(ciphered)
 		} else {
+			// · The Unicode point CANNOT be encoded (not present in alphabet)
+			//	 pass it through as-is.
 			result.WriteRune(plainRune)
 		}
 	}
@@ -130,37 +191,58 @@ func (c *Caesar) Encode(plain string) string {
 	return result.String()
 }
 
+// implements ITranscoder for decoding/decrypting a message using
+// the selected Caesar mode/variant (Caesar, Didimus, Fibonacci, Primus)
 func (c *Caesar) Decode(ciphered string) string {
 	var result strings.Builder
-	var alphabet string = c.params.Alphabet.String()
-	var shift int
+	var alphabet string = c.sequencer.GetParams().Alphabet.String()
+	var tabulaIn []rune  // the plain-text alphabet tabula
+	var tabulaRaw string // the raw ciphered alphabet string
+	var tabulaOut []rune // the ciphered alphabet tabula
 
-	tokens := []rune(alphabet)
-	shift = c.params.KeyValue
-	if len(tokens) < c.params.KeyValue-1 {
-		log.Printf("wrapping key '%d' of alphabet length %d", c.params.KeyValue, len(tokens))
-		shift %= len(tokens)
+	// · slight optimization for monoalphabetic modes
+	if !c.sequencer.IsPolyalphabetic() {
+		withKey := c.sequencer.GetParams().KeyValue
+		tabulaRaw = RotateStringLeft(alphabet, withKey)
+		tabulaOut = []rune(tabulaRaw)
 	}
-
-	tabulaRaw := RotateStringLeft(alphabet, shift)
-	tabulaOut := []rune(tabulaRaw)
+	// during decryption we map from tabulaOut to tabulaIn
+	tabulaIn = []rune(alphabet)
 
 	for _, cipherRune := range []rune(ciphered) {
+		// · Letter-case preservation
 		// the reference alphabet is Uppercase, input may be lowercase
 		isLower := unicode.IsLower(cipherRune)
 		if isLower {
 			cipherRune = unicode.ToUpper(cipherRune)
 		}
 
-		if at := slices.Index(tabulaOut, cipherRune); at != -1 {
-			plain := tokens[at]
-			// maintain case
+		// we cannot use at just yet because for polyalphabetic
+		// we have not yet (re)constructed tabulaOut
+		if at := slices.Index(tabulaIn, cipherRune); at != -1 {
+			// · The Unicode point CAN be decoded (present in alphabet)
+			//	 select the appropriate key & tabula for polialphabetic ciphers
+			withKey := c.sequencer.NextKey()
+			if c.sequencer.IsPolyalphabetic() {
+				tabulaRaw = RotateStringLeft(alphabet, withKey)
+				tabulaOut = []rune(tabulaRaw)
+			}
+
+			// · Now that we have the ciphered tabula, we can determine index.
+			//   This works because both tabulaIn & tabulaOut contain the same
+			//	 character set, i.e. not transliteration of text to symbols.
+			//	 Therefore, the following value will always be >= 0
+			at = slices.Index(tabulaOut, cipherRune)
+			plain := tabulaIn[at]
+			// · preserve the input letter-case
 			if isLower {
 				plain = unicode.ToLower(plain)
 			}
 
+			// · Write to output decoded string
 			result.WriteRune(plain)
 		} else {
+			// · If not present, pass as-is to the output string
 			result.WriteRune(cipherRune)
 		}
 	}
