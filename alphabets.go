@@ -64,3 +64,132 @@ func RuneString(latin string) string {
 
 	return string(result)
 }
+
+// The AlphabetFactory function returns an instance of the
+// requested alphabet. The nameOrCode can be the full name
+// or its 2-5 letter id. It is case-sensitive. Returns nil
+// if it cannot comply. It sets the Name if it is empty.
+func AlphabetFactory(nameOrCode string) *AlphabetModel {
+	var mdl *AlphabetModel
+	switch nameOrCode {
+	case "EN":
+		fallthrough
+	case "English":
+		mdl = NewAlphabetModelCased(Alpha_EN)
+		mdl.Name = "English"
+
+	case "ES":
+		fallthrough
+	case "Español":
+		mdl = NewAlphabetModelCased(Alpha_ES_DUAL)
+		mdl.Name = "Español"
+
+	case "ES-XTR":
+		fallthrough
+	case "Español con acentos":
+		mdl = NewAlphabetModelCased(Alpha_ES)
+		mdl.Name = "Español con acentos"
+
+	case "CZ":
+		fallthrough
+	case "Czech":
+		mdl = NewAlphabetModelCased(Alpha_CZ)
+		mdl.Name = "Czech"
+
+	case "DE":
+		fallthrough
+	case "Deutsch":
+		mdl = NewAlphabetModelCased(Alpha_DE)
+		mdl.Name = "Deutsch"
+
+	case "IT":
+		fallthrough
+	case "Italiano":
+		mdl = NewAlphabetModelCased(Alpha_IT)
+		mdl.Name = "Italiano"
+
+	case "PT":
+		fallthrough
+	case "Portuguese", "Português":
+		mdl = NewAlphabetModelCased(Alpha_PT)
+		mdl.Name = "Português"
+
+	case "RU":
+		fallthrough
+	case "Cyrillic", "Russian", "Ukrainian":
+		mdl = NewAlphabetModelCased(Alpha_RU)
+		mdl.Name = "Russian"
+
+	case "GR":
+		fallthrough
+	case "Greek":
+		mdl = NewAlphabetModelCased(Alpha_GR)
+		mdl.Name = "Greek"
+
+	case "PU":
+		fallthrough
+	case "Punctuation (all)":
+		mdl = NewAlphabetModelCased(Alpha_PU)
+		mdl.Name = "Punctuation (all)"
+
+	case "PU-ES":
+		fallthrough
+	case "Puntuacion para Español":
+		mdl = NewAlphabetModelCased(Alpha_PU_DUAL_ES)
+		mdl.Name = "Puntuacion para Español"
+
+	case "PU-EN":
+		fallthrough
+	case "Punctuation for English":
+		mdl = NewAlphabetModelCased(Alpha_PU_DUAL_EN)
+		mdl.Name = "Punctuation for English"
+
+	case "Runes":
+		mdl = NewAlphabetModelCased(Alpha_RUNES)
+		mdl.Name = "Runes"
+
+	default:
+		println("Unrecognized alphabet in factory: ", nameOrCode)
+	}
+
+	return mdl
+}
+
+// compare the alphabet contents with the predefined list.
+// If found, set its Name and return that name.
+func IdentifyAlphabet(α *AlphabetModel) string {
+	if α.Name != "" {
+		return α.Name
+	}
+
+	switch string(α.alphabet) {
+	case Alpha_EN:
+		α.Name = "English"
+	case Alpha_ES_DUAL:
+		α.Name = "Español"
+	case Alpha_ES:
+		α.Name = "Español con acentos"
+	case Alpha_CZ:
+		α.Name = "Czech"
+	case Alpha_DE:
+		α.Name = "Deutsch"
+	case Alpha_IT:
+		α.Name = "Italiano"
+	case Alpha_PT:
+		α.Name = "Português"
+	case Alpha_RU:
+		α.Name = "Russian"
+	case Alpha_GR:
+		α.Name = "Greek"
+	case Alpha_PU:
+		α.Name = "Punctuation (all)"
+	case Alpha_PU_DUAL_ES:
+		α.Name = "Puntuacion para Español"
+	case Alpha_PU_DUAL_EN:
+		α.Name = "Punctuation for English"
+	case Alpha_RUNES:
+		α.Name = "Runes"
+	}
+
+	return α.Name
+}

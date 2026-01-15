@@ -42,6 +42,7 @@ var (
 type TriState uint8
 
 type AlphabetModel struct {
+	Name        string
 	alphabet    []rune
 	upperCased  TriState
 	symbolsOnly bool
@@ -60,6 +61,7 @@ type AlphabetModel struct {
 // However, the alphabet is converted to uppercase.
 func NewAlphabetModelCased(alphabet string) *AlphabetModel {
 	return &AlphabetModel{
+
 		alphabet:    []rune(strings.ToUpper(alphabet)),
 		upperCased:  Yes,
 		symbolsOnly: false,
