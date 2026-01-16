@@ -6,13 +6,15 @@ else
 endif
 
 # - Go Build Environment
+#    -tags=logx|mlog
 GO=go
-GO_TAGS=-tags mlog
+GO_TAGS=-tags=logx
+GO_INJECT=-ldflags "-X caesardisk.vcsDate=`date +%Y-%m-%d` -X caesardisk.vcsVersion=`awk -F'[ ="]+' '$$1 == "Version" { print $$2 }' cmd/gui-app/FyneApp.toml` -X caesardisk.vcsBuildNum=`awk -F'[ ="]+' '$$1 == "Build" { print $$2 }' cmd/gui-app/FyneApp.toml`" 
 ifeq ($(detected_OS), Windows)
 	GOFLAGS = -v -buildmode=exe -gcflags all=-N 
 	EXE_EXT=.exe
 else
-	GOFLAGS = -v -buildmode=pie
+	GOFLAGS = -v -buildmode=exe ${GO_INJECT}
 	EXE_EXT=
 endif
 
@@ -28,7 +30,7 @@ PKG_FULL_VERSION=$(shell grep -m 1 'MANUAL_VERSION' version.go | sed -E 's/.*"([
 PKG_PUBLIC_NAME=$(shell grep -m 1 'module' go.mod | sed -E 's/^module\s+//p')
 PKG_NAME=caesardisk
 PKG_REVISION=1
-PKG_VERSION=1.3.1
+PKG_VERSION=1.4.0
 PKG_ARCH=amd64
 PKG_FULLNAME=${PKG_NAME}_${PKG_VERSION}-${PKG_REVISION}_${PKG_ARCH}
 PKG_BUILD_DIR=${HOME}/Develop/Distrib/Build/${PKG_NAME}
@@ -40,7 +42,7 @@ MAIN_CAESAR=cmd/disk/*.go
 BIN_OUT_1=$(GO_PROJ_BIN)/$(EXEC_CAESAR)$(EXE_EXT)
 
 EXEC_GUI=caesar-gui
-MAIN_GUI=cmd/gui/*.go
+MAIN_GUI=cmd/gui-app/*.go
 BIN_OUT_2=$(GO_PROJ_BIN)/$(EXEC_GUI)$(EXE_EXT)
 
 # - Main Targets
@@ -69,6 +71,9 @@ caesardisk:
 
 ui:
 	$(GO) build $(GO_TAGS) $(GOFLAGS) -o ${BIN_OUT_2} ${MAIN_GUI}
+
+package:
+	~/go/bin/fyne package --release -executable bin/caesardiskGUI_linux_amd64  --target android/arm64 --app-version ${PKG_VERSION} --icon cmd/gui-app/gui/app_icon.png ${MAIN_GUI}
 
 # - Secondary Targets
 
