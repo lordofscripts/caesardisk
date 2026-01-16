@@ -8,12 +8,14 @@
 package caesardisk
 
 import (
-	"embed"
+	_ "embed"
 	"errors"
 	"fmt"
 	"image"
 	"image/color"
 	"image/png"
+	"io"
+	"io/fs"
 	"log"
 	"math"
 	"os"
@@ -21,6 +23,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/fogleman/gg"
+	"github.com/golang/freetype/truetype"
+	"github.com/lordofscripts/goapp/app/logx"
 	"golang.org/x/image/font"
 )
 
@@ -38,17 +42,36 @@ const (
 
 	DEFAULT_FONT_REGULAR = "ubuntu.regular.ttf"
 	DEFAULT_FONT_BOLD    = "ubuntu.bold.ttf"
+
+	FONT_XIROD_REGULAR        = "xirod.regular.ttf"
+	FONT_TOXIGENESIS_BOLD     = "toxigenesis.rg-bold.ttf"
+	FONT_BREAMCATCHER_REGULAR = "breamcatcher.regular.ttf"
 )
 
 // Default Free embedded font(s). See DEFAULT_FONT_REGULAR
 //
 //go:embed ubuntu.regular.ttf
-var fontUbuntuRegular embed.FS
+var fontUbuntuRegular []byte
 
 // Default Free embedded font(s). See DEFAULT_FONT_BOLD
 //
 //go:embed ubuntu.bold.ttf
-var fontUbuntuBold embed.FS
+var fontUbuntuBold []byte
+
+// Alternate alphabet font
+//
+//go:embed breamcatcher.regular.ttf
+var fontBreamCatcherRegular []byte
+
+// Alternate alphabet font
+//
+//go:embed toxigenesis.rg-bold.ttf
+var fontToxigenesisBold []byte
+
+// Alternate alphabet font
+//
+//go:embed xirod.regular.ttf
+var fontXirodRegular []byte
 
 var (
 	ErrUnmatchedDual error = errors.New("for dual alphabet mode both alphabets must have equal lengths")
@@ -158,6 +181,17 @@ func rotateImage(dc *gg.Context, degrees float64) {
 
 // load a font given its path and set its size
 func loadFont(fontPath string, size float64) font.Face {
+	// For built-in fonts we load them from an embedded data slice
+	if fontData, ok := IsBuiltInFont(fontPath); ok {
+		font, err := LoadEmbeddedFontFaceFromData(fontData, size)
+		if err != nil {
+			logx.AttentionAlways("embeddedFont", err)
+			return nil
+		}
+		return font
+	}
+
+	// not built-in, should be on the actual filesystem
 	if face, err := gg.LoadFontFace(fontPath, size); err != nil {
 		log.Printf("could not load font. %v. Using default font.", err)
 		if face, err = gg.LoadFontFace("sans-serif", size); err != nil {
@@ -664,4 +698,103 @@ func generateCaesarWheel(letters string, inner bool, opts CaesarWheelOptions) (*
 	dc.DrawStringAnchored(basename, float64(opts.Size.Dx())*0.80, float64(opts.Size.Dy()-20), 0.5, 0.5)
 
 	return dc, nil
+}
+
+/* ----------------------------------------------------------------
+ *					F u n c t i o n s
+ *-----------------------------------------------------------------*/
+
+// Whether the named font is an embedded font, for example "ubuntu.regular.ttf"
+// is a built-in (5 at the moment). If it is built-in, it returns its
+// corresponding embed.FS instance.
+/*
+func IsBuiltInFont(fontName string) (embed.FS, bool) {
+	fontMap := make(map[string]embed.FS)
+	fontMap[DEFAULT_FONT_REGULAR] = fontUbuntuRegular
+	fontMap[DEFAULT_FONT_BOLD] = fontUbuntuBold
+	fontMap[FONT_BREAMCATCHER_REGULAR] = fontBreamCatcherRegular
+	fontMap[FONT_TOXIGENESIS_BOLD] = fontToxigenesisBold
+	fontMap[FONT_XIROD_REGULAR] = fontXirodRegular
+
+	if emFS, exists := fontMap[fontName]; exists {
+		return emFS, true
+	}
+
+	return fontUbuntuRegular, false
+}
+*/
+
+// check if fontName represents an embedded built-in font. If so,
+// it would return the font data and true. The font data can be
+// fed to LoadEmbeddedFontFaceFromData
+func IsBuiltInFont(fontName string) ([]byte, bool) {
+	fontMap := make(map[string][]byte)
+	fontMap[DEFAULT_FONT_REGULAR] = fontUbuntuRegular
+	fontMap[DEFAULT_FONT_BOLD] = fontUbuntuBold
+	fontMap[FONT_BREAMCATCHER_REGULAR] = fontBreamCatcherRegular
+	fontMap[FONT_TOXIGENESIS_BOLD] = fontToxigenesisBold
+	fontMap[FONT_XIROD_REGULAR] = fontXirodRegular
+
+	if emFS, exists := fontMap[fontName]; exists {
+		return emFS, true
+	}
+
+	return fontUbuntuRegular, false
+}
+
+func LoadEmbeddedFontFaceFromData(fontData []byte, size float64) (font.Face, error) {
+	f, err := truetype.Parse(fontData)
+	if err != nil {
+		return nil, err
+	}
+
+	face := truetype.NewFace(f, &truetype.Options{
+		Size: Height2Points(size),
+		// Hinting: font.HintingFull,
+	})
+
+	return face, nil
+}
+
+// LoadFontFace is a helper function to load the specified font file with
+// the specified point size. Note that the returned `font.Face` objects
+// are not thread safe and cannot be used in parallel across goroutines.
+// You can usually just use the Context.LoadFontFace function instead of
+// this package-level function.
+// The size is in Points, to use gg units apply Height2Points()
+func LoadEmbeddedFontFace(fS fs.FS, path string, points float64) (font.Face, error) {
+	var fontBytes []byte
+	var err error
+	if fS == nil {
+		fontBytes, err = os.ReadFile(path)
+	} else {
+		fp, err := fS.Open(path)
+		if err != nil {
+			return nil, err
+		}
+		defer fp.Close()
+		fontBytes, err = io.ReadAll(fp)
+	}
+	if err != nil {
+		return nil, err
+	}
+	f, err := truetype.Parse(fontBytes)
+	if err != nil {
+		return nil, err
+	}
+	face := truetype.NewFace(f, &truetype.Options{
+		Size: points,
+		// Hinting: font.HintingFull,
+	})
+	return face, nil
+}
+
+// Converts a size in Points to the standard (Pixels?) used by gg
+func Points2Height(points float64) float64 {
+	return points * 72 / 96
+}
+
+// Converts the GG size to Points font unit
+func Height2Points(size float64) float64 {
+	return size * 96 / 72
 }
