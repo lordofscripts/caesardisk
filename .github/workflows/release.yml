@@ -26,7 +26,7 @@ jobs:
             goos: [windows, linux]
     steps:
     - uses: actions/checkout@v4
-      uses: actions/setup-go@v4
+    - uses: actions/setup-go@v4
       with:
         go-version: '1.24'
     - uses: wangyoucao577/go-release-action@v1
