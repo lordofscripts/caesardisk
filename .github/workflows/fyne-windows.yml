@@ -36,7 +36,7 @@ jobs:
     - name: Run fyne-cross to build for Windows
       # This command builds the application for Windows (amd64) inside a Docker container.
       # The output will be in the 'dist' directory.
-      run: fyne-cross windows --arch amd64 --app-id com.coralys.caesardisk
+      run:  | cd cmd/gui-app fyne-cross windows --arch amd64 --app-id com.coralys.caesardisk
 
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4

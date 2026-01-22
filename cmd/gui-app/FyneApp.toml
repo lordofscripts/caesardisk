@@ -3,7 +3,7 @@ Website = "https://github.com/lordofscripts"
 [Details]
 Icon = "Icon.png"
 Name = "Caesar Disk Generator"
-ID = "com.lordofscripts.app.caesardisk_ui"
+ID = "com.coralys.caesardisk"
 Version = "1.4.0"
 Build = 1
 
