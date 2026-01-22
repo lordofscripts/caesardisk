@@ -1,8 +1,8 @@
 Website = "https://github.com/lordofscripts"
 
 [Details]
-Icon = "Icon.png"
-Name = "caesarDisk"
+Icon = "gui/app_icon.png"
+Name = "caesardisk"
 ID = "com.coralys.caesardisk"
 Version = "1.4.0"
 Build = 1

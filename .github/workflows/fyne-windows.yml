@@ -31,7 +31,9 @@ jobs:
         go mod download
 
     - name: Install fyne-cross tool
-      run: go install github.com/fyne-io/fyne-cross@latest
+      run: |
+        go install fyne.io/fyne/v2@latest
+        go install github.com/fyne-io/fyne-cross@latest
 
     - name: Run fyne-cross to build for Windows
       # This command builds the application for Windows (amd64) inside a Docker container.
