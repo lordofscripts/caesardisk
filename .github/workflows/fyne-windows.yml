@@ -1,0 +1,50 @@
+name: Build Fyne App for Windows
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    # fyne-cross requires a Linux or macOS environment with Docker installed. 
+    # Ubuntu is a common choice for GitHub Actions.
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24' # Use a recent Go version
+
+    - name: Install X11 dependencies for Fyne
+      run: sudo apt-get update && sudo apt-get install -y libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev xorg-dev
+
+    - name: Install dependencies
+      run: |
+        go mod download
+
+    - name: Install fyne-cross tool
+      run: |
+        go install fyne.io/fyne/v2@latest
+        go install github.com/fyne-io/fyne-cross@latest
+
+    - name: Run fyne-cross to build for Windows
+      # This command builds the application for Windows (amd64) inside a Docker container.
+      # The output will be in the 'dist' directory.
+      run: |
+        cd cmd/gui-app 
+        fyne-cross windows --arch amd64 --app-id com.coralys.caesardisk
+
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Windows-App
+        path: dist/windows-amd64/*.exe
+        # The exact path to the executable may vary based on your app name and fyne-cross version.

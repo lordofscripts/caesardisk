@@ -5,10 +5,10 @@ go 1.24.0
 require (
 	fyne.io/fyne/v2 v2.7.2
 	github.com/fogleman/gg v1.3.0
-	golang.org/x/image v0.34.0
+	golang.org/x/image v0.35.0
 )
 
-require github.com/lordofscripts/goapp v1.0.0
+require github.com/lordofscripts/goapp v1.1.1
 
 require github.com/lordofscripts/gofynex v1.1.0
 
@@ -42,6 +42,6 @@ require (
 	github.com/yuin/goldmark v1.7.13 // indirect
 	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
-	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/text v0.33.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -1,14 +1,14 @@
 Website = "https://github.com/lordofscripts"
 
 [Details]
-Icon = "gui/app_icon.png"
-Name = "Caesar Disk Generator"
+Icon = "Icon.png"
+Name = "caesardisk"
 ID = "com.lordofscripts.app.caesardisk_ui"
 Version = "1.4.0"
 Build = 1
 
 [LinuxAndBSD]
-GenericName = "GoCaesarDisk"
+GenericName = "CaesarDisk"
 Categories = ["Utilities"]
 Comment = "Visual Caesar cipher disk and encoder"
 Keywords = ["caesar", "cipher"]
