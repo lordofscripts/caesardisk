@@ -21,6 +21,7 @@ import (
 	"github.com/lordofscripts/caesardisk"
 	"github.com/lordofscripts/caesardisk/crypto"
 	"github.com/lordofscripts/goapp/app/logx"
+	"github.com/lordofscripts/gofynex/fynex"
 )
 
 /* ----------------------------------------------------------------
@@ -52,8 +53,8 @@ type WheelGadget struct {
 	image *canvas.Image
 	//imageW    *ClickImage
 	sample    image.Image
-	caption   *DynamicLabel //*widget.Label
-	labelMode *DynamicLabel
+	caption   *fynex.DynamicLabel //*widget.Label
+	labelMode *fynex.DynamicLabel
 	container *fyne.Container
 
 	mutex sync.Mutex
@@ -107,7 +108,7 @@ func (g *WheelGadget) Define() IGadget {
 		return g
 	} else {
 		//smallTextLabel := widget.NewLabelWithStyle(wheelCaption_MAINKEY, fyne.TextAlignCenter, fyne.TextStyle{
-		smallTextLabel := NewDynamicLabelWithStyle(wheelCaption_MAINKEY, fyne.TextAlignCenter, fyne.TextStyle{
+		smallTextLabel := fynex.NewDynamicLabelWithStyle(wheelCaption_MAINKEY, fyne.TextAlignCenter, fyne.TextStyle{
 			Bold:      true,
 			Monospace: true,
 		}, nil)
@@ -116,7 +117,7 @@ func (g *WheelGadget) Define() IGadget {
 		g.caption = smallTextLabel
 
 		// · Cipher Mode label (informational)
-		g.labelMode = NewDynamicLabelWithStyle(InitialCipherMode.String(), fyne.TextAlignCenter, fyne.TextStyle{
+		g.labelMode = fynex.NewDynamicLabelWithStyle(InitialCipherMode.String(), fyne.TextAlignCenter, fyne.TextStyle{
 			Bold:      true,
 			Monospace: true,
 		}, nil)

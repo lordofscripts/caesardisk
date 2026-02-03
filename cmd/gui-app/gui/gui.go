@@ -10,7 +10,6 @@ package gui
 import (
 	_ "embed"
 	"errors"
-	"net/url"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -18,10 +17,11 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/widget"
 	"github.com/lordofscripts/caesardisk"
 	"github.com/lordofscripts/caesardisk/crypto"
+	"github.com/lordofscripts/caesardisk/internal/cipher"
 	"github.com/lordofscripts/goapp/app/logx"
+	"github.com/lordofscripts/gofynex/fynex"
 )
 
 /* ----------------------------------------------------------------
@@ -56,11 +56,6 @@ Caesar cipher:
 Copyright ©2025 LordOfScripts™
 `
 
-// Embedded application icon
-//
-//go:embed app_icon.png
-var applicationIcon []byte
-
 /* ----------------------------------------------------------------
  *				I n t e r f a c e s
  *-----------------------------------------------------------------*/
@@ -79,7 +74,7 @@ type MenuItemActionCB func()
 type MainGUI struct {
 	a        fyne.App
 	w        fyne.Window
-	dlgAbout dialog.Dialog
+	dlgAbout *fynex.AboutBox
 
 	gadgets     *appGadgets
 	controllers *appControllers
@@ -134,33 +129,48 @@ func NewGUI(alist *AlphabetList, wopts *caesardisk.CaesarWheelOptions) *MainGUI 
  *-----------------------------------------------------------------*/
 
 func (g *MainGUI) Define() *MainGUI {
-	resource := fyne.NewStaticResource("app_icon.png", applicationIcon)
-
 	myApp := app.NewWithID(APP_ID)
-	myApp.SetIcon(resource) // @audit this isn't working
+	myApp.SetIcon(applicationIcon)
 	myApp.Lifecycle().SetOnStarted(g.OnStarted)
 	myWindow := myApp.NewWindow(APP_TITLE)
-	myWindow.SetIcon(resource) // @audit this isn't working
+	myWindow.SetIcon(applicationIcon)
+
+	// Fix Metadata as it is usually the case
+	meta := myApp.Metadata()
+	if len(meta.ID) == 0 {
+		meta.ID = APP_ID
+	}
+	if meta.Icon == nil {
+		meta.Icon = applicationIcon
+	}
+	if len(meta.Version) == 0 {
+		meta.Version = caesardisk.Version
+	}
+	if len(meta.Name) == 0 {
+		meta.Name = APP_TITLE
+	}
+	meta.Custom["url"] = "https://github.com/lordofscripts"
 
 	// · Help|About dialog
-	url, _ := url.Parse("https://github.com/lordofscripts")
-	g.dlgAbout = NewAbout(aboutCONTENT,
-		[]*widget.Hyperlink{
-			widget.NewHyperlink("GitHub", url),
-		}, myApp, myWindow)
+	g.dlgAbout = fynex.NewAboutBox(myWindow, applicationIcon, meta, aboutCONTENT)
 
 	// · Main Menu Bar
-	// 	File menu
+	// 	 File menu : Open - Quit
 	menuFileQuit := newMenuItemWithShortcut(fyne.KeyModifierAlt, fyne.KeyQ, "Quit", g.OnAppCloseEvent)
 	menuFileOpen := newMenuItemWithShortcut(fyne.KeyModifierAlt, fyne.KeyO, "Open", g.OnFileOpeningEvent)
 	menuFileOpen.Disabled = true
 
 	menuTopFile := fyne.NewMenu("File", menuFileOpen, fyne.NewMenuItemSeparator(), menuFileQuit)
 
-	menuHelpAbout := newMenuItemWithShortcut(fyne.KeyModifierAlt, fyne.KeyH, "About", g.dlgAbout.Show)
+	//   Misc menu: KeySchedule
+	menuMiscSchedule := newMenuItemWithShortcut(fyne.KeyModifierAlt, fyne.KeyK, "Key schedule", g.showKeySchedule)
+	menuTopMisc := fyne.NewMenu("Misc", menuMiscSchedule)
+
+	//   Help menu: About
+	menuHelpAbout := newMenuItemWithShortcut(fyne.KeyModifierAlt, fyne.KeyH, "About", g.dlgAbout.ShowDialog)
 	menuTopHelp := fyne.NewMenu("Help", menuHelpAbout)
 
-	menuMain := fyne.NewMainMenu(menuTopFile, menuTopHelp)
+	menuMain := fyne.NewMainMenu(menuTopFile, menuTopMisc, menuTopHelp)
 	myWindow.SetMainMenu(menuMain)
 
 	// · Instantiate Gadgets
@@ -342,19 +352,6 @@ func (g *MainGUI) drawOptionsTab() *container.TabItem {
 	// -- Rendering: Orthogonality
 	g.gadgets.Misc.Define()
 
-	/*
-		var checkOrtho *widget.Check
-		checkOrtho = widget.NewCheck("Orthogonal", nil)
-		checkOrtho.SetChecked(g.wheelOpts.Orthogonal) // we don't want to trigger just yet
-		checkOrtho.OnChanged = func(b bool) {
-			g.wheelOpts.Orthogonal = checkOrtho.Checked
-		}
-
-		optionUsePDU = binding.NewBool() // data source for PDU checkbox
-		optionUsePDU.Set(false)
-		checkPDU := widget.NewCheckWithData("Use PDU format", optionUsePDU)
-	*/
-
 	// -- Content Layout
 	tab2Content := container.New(layout.NewVBoxLayout(),
 		g.gadgets.Cipher.Canvas(),
@@ -372,6 +369,48 @@ func (g *MainGUI) drawOptionsTab() *container.TabItem {
 	g.gadgets.Misc.PostRender()
 
 	return tab2
+}
+
+func (g *MainGUI) showKeySchedule() {
+	// alphabet instance
+	if alphaName, err := BoundAlphaName.Get(); err == nil {
+		alpha := caesardisk.AlphabetFactory(alphaName)
+		// cipher controller with currently selected alphabet
+		ctrl := g.controllers.Cipher.CloneWith(alpha)
+		// current encryption parameters
+		sm := DataBindings.GetSessionModel()
+		param := cipher.CaesarParameters{
+			//Alphabet: alpha,
+			KeyValue: sm.MainKey.Shift,
+			Offset:   sm.Offset,
+		}
+		// get programmed key schedule for current key/offset setting
+		var err error
+		var schedule crypto.KeySchedule
+		switch g.gadgets.Cipher.GetCipherMode() { // @note Update when new cipher modes
+		case crypto.CaesarMode:
+			schedule, err = ctrl.GetCaesarSchedule(param.KeyValue)
+		case crypto.DidimusMode:
+			schedule, err = ctrl.GetDidimusSchedule(param.KeyValue, param.Offset)
+		case crypto.FibonacciMode:
+			schedule, err = ctrl.GetFibonacciSchedule(param.KeyValue)
+		case crypto.PrimusMode:
+			schedule, err = ctrl.GetPrimusSchedule(param.KeyValue, param.Offset)
+		}
+		// any errors?
+		if err != nil {
+			g.Notify(true, err.Error())
+		} else {
+			// show schedule to user
+			title, _ := BoundCipherModeName.Get()
+			modal := NewKeyScheduleViewer(g.w, title, schedule)
+			modal.Resize(fyne.NewSize(WINDOW_WIDTH+50, WINDOW_HEIGHT/2))
+			modal.Show()
+		}
+	} else {
+		logx.Print(err)
+	}
+
 }
 
 // call Bind on all gadgets

@@ -18,6 +18,7 @@ import (
 	"github.com/lordofscripts/caesardisk"
 	"github.com/lordofscripts/caesardisk/crypto"
 	"github.com/lordofscripts/goapp/app/logx"
+	"github.com/lordofscripts/gofynex/fynex"
 )
 
 /* ----------------------------------------------------------------
@@ -71,7 +72,7 @@ func (g *KeyOffsetGadget) Define() IGadget {
 	sm = DataBindings.GetSessionModel()
 
 	// · Slider title
-	labelTitle := NewDynamicLabelWithStyle("Alternate Key Offset", fyne.TextAlignCenter, fyne.TextStyle{
+	labelTitle := fynex.NewDynamicLabelWithStyle("Alternate Key Offset", fyne.TextAlignCenter, fyne.TextStyle{
 		Bold:      true,
 		Italic:    true,
 		Monospace: false,
