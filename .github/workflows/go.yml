@@ -1,5 +1,5 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+# This workflow will build a golang project V3
+# Builds a Fyne app on macOS, Linux & Windows forcing Bash shell on all of them.
 # ![Build](https://github.com/lordofscripts/REPOSITORYNAME/actions/workflows/go.yml/badge.svg)
 
 name: Go
@@ -13,24 +13,53 @@ on:
 jobs:
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ['', 'stable']
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
+      with:
+        persist-credentials: false
 
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: ${{ matrix.go-version }}
+        go-version-file: 'go.mod'
 
     - name: Install dependencies
-      run: |
-        go get .
+      run: >-
+        sudo apt-get update &&
+        sudo apt-get install
+        bc
+        gcc
+        libgl1-mesa-dev
+        libwayland-dev
+        libx11-dev
+        libxkbcommon-dev
+        xorg-dev
+      if: ${{ runner.os == 'Linux' }}
 
     - name: Build
       run: go build -v ./...
 
     - name: Test
-      run: GITHUBLOS=true go test -v -coverprofile=profile.cov ./...
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          GITHUBLOS=true go test -v -coverprofile=profile.cov ./...
+        elif [ "$RUNNER_OS" == "Windows" ]; then
+          export GITHUBLOS=true && go test -v -coverprofile=profile.cov ./...
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          GITHUBLOS=true go test -v -coverprofile=profile.cov ./...
+        else
+          echo "$RUNNER_OS not supported"
+          exit 1
+        fi
 
     - name: Send coverage
       uses: shogo82148/actions-goveralls@v1
