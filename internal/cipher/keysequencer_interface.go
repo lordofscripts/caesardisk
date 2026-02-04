@@ -26,7 +26,10 @@ type IKeySequencer interface {
 	Validate() error
 	// Query the key value range (min,max) for main or alt key
 	KeyRange() (min, max int)
-	// Retrieve cipher parameters
+	// The internal key schedule
+	GetRawKeySchedule() []KeyScheduleItemInt
+	// Retrieve cipher parameters. This must be called if Validate()
+	// returned a non-nil warning (error) to retrieve corrected parameters.
 	GetParams() *CaesarParameters
 	// gets the key to use for the current character. Must only be
 	// called if the character to encode/decode is part of the

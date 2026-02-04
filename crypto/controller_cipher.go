@@ -223,6 +223,135 @@ func (cc *CipherController) UnpackMessage(pdu string, mode CaesarCipherMode, key
 	return "", err
 }
 
+func (cc *CipherController) CaesarCorrection(keyShift int) (main CaesarKey, warn error) {
+	var shf int
+	shf, warn = cipher.CaesarCorrection(keyShift, cc.alpha)
+	let, _ := cc.alpha.Character(shf)
+
+	return CaesarKey{
+		Shift:  shf,
+		Letter: let,
+	}, warn
+}
+
+// The key schedule for a plain Caesar scheduler
+func (cc *CipherController) GetCaesarSchedule(keyShift int) (KeySchedule, error) {
+	// parameters for the sequencer
+	p := cipher.NewCaesarParameters(cc.alpha)
+	p.KeyValue = keyShift
+	// the sequencer that will provide us the raw sequence of keys
+	seq := cipher.NewCaesarSequencer(p)
+	if seq.Validate() != nil {
+		// obtain corrected parameters.
+		p = seq.GetParams()
+	}
+	// get the raw key schedule
+	rawSchedule := seq.GetRawKeySchedule()
+	// convert it to a public API object
+	qty := len(rawSchedule)
+	schedule := make(KeySchedule, qty)
+	for i, raw := range rawSchedule {
+		shf := raw.KeyShift
+		chr, _ := cc.alpha.Character(shf)
+		schedule[i] = KeyScheduleItem{
+			KeyShift: shf,
+			KeyChar:  chr,
+			Comment:  raw.Comment,
+			Tabula:   cipher.RotateStringLeft(cc.alpha.String(), shf),
+		}
+	}
+	return schedule, nil
+}
+
+// The key schedule for a Didimus scheduler
+func (cc *CipherController) GetDidimusSchedule(keyShift, keyOffset int) (KeySchedule, error) {
+	// parameters for the sequencer
+	p := cipher.NewCaesarParameters(cc.alpha)
+	p.KeyValue = keyShift
+	p.Offset = keyOffset
+	// the sequencer that will provide us the raw sequence of keys
+	seq := cipher.NewDidimusSequencer(p)
+	if seq.Validate() != nil {
+		// obtain corrected parameters.
+		p = seq.GetParams()
+	}
+	// get the raw key schedule
+	rawSchedule := seq.GetRawKeySchedule()
+	// convert it to a public API object
+	qty := len(rawSchedule)
+	schedule := make(KeySchedule, qty)
+	for i, raw := range rawSchedule {
+		shf := raw.KeyShift
+		chr, _ := cc.alpha.Character(shf)
+		schedule[i] = KeyScheduleItem{
+			KeyShift: shf,
+			KeyChar:  chr,
+			Comment:  raw.Comment,
+			Tabula:   cipher.RotateStringLeft(cc.alpha.String(), shf),
+		}
+	}
+	return schedule, nil
+}
+
+// The key schedule for a Fibonacci scheduler
+func (cc *CipherController) GetFibonacciSchedule(keyShift int) (KeySchedule, error) {
+	// parameters for the sequencer
+	p := cipher.NewCaesarParameters(cc.alpha)
+	p.KeyValue = keyShift
+	// the sequencer that will provide us the raw sequence of keys
+	seq := cipher.NewFibonacciSequencer(p)
+	if seq.Validate() != nil {
+		// obtain corrected parameters.
+		p = seq.GetParams()
+	}
+	// get the raw key schedule
+	rawSchedule := seq.GetRawKeySchedule()
+	// convert it to a public API object
+	qty := len(rawSchedule)
+	schedule := make(KeySchedule, qty)
+	for i, raw := range rawSchedule {
+		shf := raw.KeyShift
+		chr, _ := cc.alpha.Character(shf)
+		schedule[i] = KeyScheduleItem{
+			KeyShift: shf,
+			KeyChar:  chr,
+			Comment:  raw.Comment,
+			Tabula:   cipher.RotateStringLeft(cc.alpha.String(), shf),
+		}
+	}
+	return schedule, nil
+}
+
+// The key schedule for a Primus scheduler
+func (cc *CipherController) GetPrimusSchedule(keyShift, keyOffset int) (KeySchedule, error) {
+	// parameters for the sequencer
+	p := cipher.NewCaesarParameters(cc.alpha)
+	p.KeyValue = keyShift
+	p.Offset = keyOffset
+	// the sequencer that will provide us the raw sequence of keys
+	seq := cipher.NewPrimusSequencer(p)
+	if seq.Validate() != nil {
+		// obtain corrected parameters.
+		p = seq.GetParams()
+	}
+	// get the raw key schedule
+	rawSchedule := seq.GetRawKeySchedule()
+	// convert it to a public API object
+	qty := len(rawSchedule)
+	schedule := make(KeySchedule, qty)
+	for i, raw := range rawSchedule {
+		shf := raw.KeyShift
+		chr, _ := cc.alpha.Character(shf)
+		schedule[i] = KeyScheduleItem{
+			KeyShift: shf,
+			KeyChar:  chr,
+			Comment:  raw.Comment,
+			Tabula:   cipher.RotateStringLeft(cc.alpha.String(), shf),
+		}
+	}
+	return schedule, nil
+}
+
 /* ----------------------------------------------------------------
  *				P r i v a t e	M e t h o d s
  *-----------------------------------------------------------------*/

@@ -18,8 +18,10 @@
 package cipher
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/lordofscripts/caesardisk"
 	"github.com/lordofscripts/goapp/app/logx"
 )
 
@@ -77,29 +79,43 @@ func (ds *DidimusSequencer) String() string {
 }
 
 func (ds *DidimusSequencer) Validate() error {
-	err := ds.CaesarSequencer.Validate()
-	if err != nil {
-		return err
-	}
-	ds.isValid = false
-
-	// now validate Offset
-	if ds.params.Offset <= 0 {
-		err = fmt.Errorf("Didimus needs a positive non-zero offset: %d", ds.params.Offset)
+	if useCORRECTORS {
+		shfM, shfO, shfAlt, warn := DidimusCorrection(ds.params.KeyValue, ds.params.Offset, ds.params.Alphabet)
+		if shfM != ds.params.KeyValue {
+			ds.params.KeyValue = shfM
+		}
+		if shfO != ds.params.KeyValue {
+			ds.params.Offset = shfO
+		}
+		if shfAlt != ds.params.altKey {
+			ds.params.altKey = shfAlt
+		}
+		return warn
 	} else {
-		alternate := ds.params.KeyValue + ds.params.Offset
-		if alternate >= ds.params.Alphabet.Length() {
-			logx.Print("WARN: offsets greater than alphabet length are rewound")
-			alternate %= ds.params.Alphabet.Length()
+		err := ds.CaesarSequencer.Validate()
+		if err != nil {
+			return err
 		}
-		if alternate == 0 {
-			alternate = 1
-		}
-		ds.altKey = alternate
-		ds.isValid = true
-	}
+		ds.isValid = false
 
-	return nil
+		// now validate Offset
+		if ds.params.Offset <= 0 {
+			err = fmt.Errorf("Didimus needs a positive non-zero offset: %d", ds.params.Offset)
+		} else {
+			alternate := ds.params.KeyValue + ds.params.Offset
+			if alternate >= ds.params.Alphabet.Length() {
+				logx.Print("WARN: offsets greater than alphabet length are rewound")
+				alternate %= ds.params.Alphabet.Length()
+			}
+			if alternate == 0 {
+				alternate = 1
+			}
+			ds.altKey = alternate
+			ds.isValid = true
+		}
+
+		return nil
+	}
 }
 
 // The valid range of Didimus keys.
@@ -124,6 +140,16 @@ func (ds *DidimusSequencer) NextKey() int {
 	return keyShift
 }
 
+// The internal key schedule
+func (ds *DidimusSequencer) GetRawKeySchedule() []KeyScheduleItemInt {
+	fakeSeq := NewDidimusSequencer(ds.params)
+	fakeSeq.Validate()
+	return []KeyScheduleItemInt{
+		{KeyShift: fakeSeq.NextKey(), Comment: "Even"}, // KeyValue
+		{KeyShift: fakeSeq.NextKey(), Comment: "Odd"},  // altKey
+	}
+}
+
 // Didimus is a bi-alphabetic substitution cipher
 func (ds *DidimusSequencer) IsPolyalphabetic() bool {
 	return true
@@ -134,4 +160,39 @@ func (ds *DidimusSequencer) IsPolyalphabetic() bool {
 // adding the Offset to the Main Key's shift.
 func (ds *DidimusSequencer) IsOffsetRequired() bool {
 	return true
+}
+
+/* ----------------------------------------------------------------
+ *					F u n c t i o n s
+ *-----------------------------------------------------------------*/
+
+// A corrector for both the main key shift and the alternate offset for Didimus.
+//
+// NOTE:
+//
+//	The return warn value is a WARNING not an error, it simply
+//	indicates whether corrections/normalizations were made.
+func DidimusCorrection(keyShift, keyOffset int, alpha *caesardisk.AlphabetModel) (main, ofs, alt int, warn error) {
+	// correct main key shift if necessary
+	var warnM error
+	main, warnM = CaesarCorrection(keyShift, alpha)
+
+	// correct offset to be without N bounds if necessary
+	var warnO error = nil
+	//ofs, warnO = CaesarCorrection(keyOffset, alpha)
+	ofs = keyOffset
+
+	// correct the Key+Offset to be within 0..N-1
+	var warnA error
+	alt, warnA = CaesarCorrection(main+ofs, alpha)
+
+	// An effective Alt Key Shift of zero (no encoding) is corrected
+	var warnS error
+	if alt == 0 {
+		alt++
+		warnS = errors.New("a Didimus alternate shift will never be zero")
+	}
+
+	warn = errors.Join(warnM, warnO, warnA, warnS)
+	return
 }

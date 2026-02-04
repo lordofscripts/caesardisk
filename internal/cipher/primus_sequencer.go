@@ -114,6 +114,19 @@ func (ps *PrimusSequencer) NextKey() int {
 	return keyShift
 }
 
+// The internal key schedule
+func (ps *PrimusSequencer) GetRawKeySchedule() []KeyScheduleItemInt {
+	qty := len(primes)
+	fakeSeq := NewPrimusSequencer(ps.params)
+	schedule := make([]KeyScheduleItemInt, qty)
+	for i := range qty {
+		schedule[i] = KeyScheduleItemInt{
+			KeyShift: fakeSeq.NextKey(),
+			Comment:  fmt.Sprintf("#%d", i)}
+	}
+	return schedule
+}
+
 // Primus is a polyalphabetic substitution cipher
 func (ps *PrimusSequencer) IsPolyalphabetic() bool {
 	return true

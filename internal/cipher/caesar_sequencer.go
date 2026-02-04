@@ -14,13 +14,20 @@ package cipher
 
 import (
 	"fmt"
+	"math"
 
+	"github.com/lordofscripts/caesardisk"
 	"github.com/lordofscripts/goapp/app/logx"
 )
 
 /* ----------------------------------------------------------------
  *						G l o b a l s
  *-----------------------------------------------------------------*/
+
+// When true we use standard correctors in IKeySequencer.Validate()
+// for consistency (introduced in v1.4). The corectors are also
+// proxied by the cipher.CipherController
+var useCORRECTORS bool = true
 
 /* ----------------------------------------------------------------
  *				I n t e r f a c e s
@@ -68,19 +75,29 @@ func (cs *CaesarSequencer) String() string {
 	return fmt.Sprintf("Caesar(%c|%d)", char, cs.params.KeyValue)
 }
 
+// The return value is not an error but a warning, execution can
+// continue with adjusted values
 func (cs *CaesarSequencer) Validate() error {
-	if cs.params.KeyValue < 0 {
-		return fmt.Errorf("cannot have negative keys")
+	if useCORRECTORS {
+		shf, warn := CaesarCorrection(cs.params.KeyValue, cs.params.Alphabet)
+		if warn != nil {
+			cs.params.KeyValue = shf
+		}
+		return warn
+	} else {
+		if cs.params.KeyValue < 0 {
+			return fmt.Errorf("cannot have negative keys")
+		}
+		if cs.params.KeyValue >= cs.params.Alphabet.Length() {
+			logx.Print("WARN: keys greater than alphabet length are rewound")
+			cs.params.KeyValue %= cs.params.Alphabet.Length()
+		}
+		if cs.params.KeyValue == 0 {
+			logx.Print("WARN: A shift of zero does not transcode")
+		}
+		cs.isValid = true
+		return nil
 	}
-	if cs.params.KeyValue >= cs.params.Alphabet.Length() {
-		logx.Print("WARN: keys greater than alphabet length are rewound")
-		cs.params.KeyValue %= cs.params.Alphabet.Length()
-	}
-	if cs.params.KeyValue == 0 {
-		logx.Print("WARN: A shift of zero does not transcode")
-	}
-	cs.isValid = true
-	return nil
 }
 
 // the range of valid key values for Caesar cipher. For plain
@@ -104,6 +121,13 @@ func (cs *CaesarSequencer) NextKey() int {
 	return cs.params.KeyValue
 }
 
+// The internal key schedule
+func (cs *CaesarSequencer) GetRawKeySchedule() []KeyScheduleItemInt {
+	return []KeyScheduleItemInt{
+		{KeyShift: cs.params.KeyValue, Comment: ""},
+	}
+}
+
 // Caesar is a monoalphabetic substitution cipher
 func (cs *CaesarSequencer) IsPolyalphabetic() bool {
 	return false
@@ -112,4 +136,35 @@ func (cs *CaesarSequencer) IsPolyalphabetic() bool {
 // whether the Offset parameter is used in key sequencing
 func (cs *CaesarSequencer) IsOffsetRequired() bool {
 	return false
+}
+
+/* ----------------------------------------------------------------
+ *					F u n c t i o n s
+ *-----------------------------------------------------------------*/
+
+// Corrects a Caesar shift value. If it is greater than the alphabet
+// length a modulo is applied. If it is a negative number, its
+// complement (possibly with modulo)  is applied. For example,
+// for N=25 S=-5 is equivalent to S=21.
+//
+// NOTE:
+//
+//	The return warn value is a WARNING not an error, it simply
+//	indicates whether corrections/normalizations were made.
+func CaesarCorrection(keyShift int, alpha *caesardisk.AlphabetModel) (main int, warn error) {
+	// Alphabet length, the shift can never be greater than that
+	N := alpha.Length()
+	// Correct the shift value if necessary
+	shf := ((keyShift % N) + N) % N
+	// Warning flags
+	isOutOfRange := int(math.Abs(float64(keyShift))) >= N
+	isNegative := keyShift < 0
+	// Warn of any corrections, it is NOT an error
+	if keyShift != shf {
+		warn = fmt.Errorf("shift value corrected %02d->%02d [OutOfRange:%t Negative:%t]", keyShift, shf, isOutOfRange, isNegative)
+	}
+
+	main = shf
+
+	return
 }

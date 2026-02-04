@@ -96,6 +96,19 @@ func (fs *FibonacciSequencer) NextKey() int {
 	return keyShift
 }
 
+// The internal key schedule
+func (cs *FibonacciSequencer) GetRawKeySchedule() []KeyScheduleItemInt {
+	qty := len(fibonacci)
+	fakeSeq := NewFibonacciSequencer(cs.params)
+	schedule := make([]KeyScheduleItemInt, qty)
+	for i := range qty {
+		schedule[i] = KeyScheduleItemInt{
+			KeyShift: fakeSeq.NextKey(),
+			Comment:  fmt.Sprintf("#%d", i)}
+	}
+	return schedule
+}
+
 // Fibonacci is a polyalphabetic substitution cipher
 func (fs *FibonacciSequencer) IsPolyalphabetic() bool {
 	return true

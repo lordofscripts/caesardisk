@@ -132,7 +132,7 @@ func (c *CaesarParameters) SetAlpha(alpha *caesardisk.AlphabetModel) (int, int) 
 // set the main keyShift and returns the adjusted (actual) effective
 // key shift corrected for alphabet length. Positive and Negative
 // values produce different results!
-func (c *CaesarParameters) SetKey(shift int) int {
+func (c *CaesarParameters) SetKey(shift int) int { // @audit deprecate!
 	c.KeyValue = c.adjustKey(shift)
 	return c.KeyValue
 }
@@ -140,7 +140,7 @@ func (c *CaesarParameters) SetKey(shift int) int {
 // compute the new alternate key based on the existing main key
 // and the provided offset. Positive and Negative values produce
 // different results. It returns the computed alternate key shift.
-func (c *CaesarParameters) SetAltKeyOffset(offset int) int {
+func (c *CaesarParameters) SetAltKeyOffset(offset int) int { // @audit deprecate!
 	c.Offset = offset
 	c.altKey = c.adjustOffset(offset)
 	return c.altKey
@@ -182,7 +182,7 @@ func KeyAdjuster(N, shift int) int {
 // It returns the alternate key which is computed from the
 // main shift plus the offset modulo N. Note, it does not
 // return an adjusted offset but the alternate key!
-func OffsetAdjuster(N, shift, offset int) int {
+func OffsetAdjuster(N, shift, offset int) int { // @audit deprecate and use CaesarCorrection()
 	// For N=26 (k:0..25)
 	// 	k=1 ofs=5 ofs'=6
 	// 	k=1 ofs=24 ofs'=25
