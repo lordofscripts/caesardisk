@@ -18,7 +18,7 @@ import (
  *							G l o b a l s
  *-----------------------------------------------------------------*/
 const (
-	MANUAL_VERSION string = "1.4.0" // in case vcsVersion not injected during link phase
+	MANUAL_VERSION string = "1.5.0" // in case vcsVersion not injected during link phase
 
 	// Useful Unicode Characters
 	CHR_COPYRIGHT       = '\u00a9'      // ©
@@ -63,7 +63,7 @@ var (
 
 	// DO NOT CHANGE THESE!
 	Version      string = appVersion.String()
-	ShortVersion string = appVersion.Short()
+	ShortVersion string = appVersion.Version()
 )
 
 /* ----------------------------------------------------------------
@@ -139,6 +139,33 @@ func (v version) String() string {
 	default:
 		ver = fmt.Sprintf("%s v%s %s", v.n, v.v, buildInfo)
 	}
+	return ver
+}
+
+// The full version number omitting build and app name
+func (v version) Version() string {
+	return v.fullVersionNumber()
+}
+
+// the full version number omitting the "v" prefix
+func (v version) fullVersionNumber() string {
+	var ver string
+
+	if len(vcsVersion) != 0 {
+		v.v = vcsVersion
+	}
+
+	switch v.s {
+	case statusAlpha:
+		fallthrough
+	case statusBeta:
+		fallthrough
+	case statusRC:
+		ver = fmt.Sprintf("%s-%s-%d", v.v, v.s, v.sv)
+	default:
+		ver = fmt.Sprintf("%s", v.v)
+	}
+
 	return ver
 }
 

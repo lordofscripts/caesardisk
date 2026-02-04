@@ -144,7 +144,7 @@ func (g *MainGUI) Define() *MainGUI {
 	if meta.Icon == nil {
 		meta.Icon = applicationIcon
 	}
-	meta.Version = caesardisk.Version
+	meta.Version = caesardisk.ShortVersion
 	if len(meta.Name) == 0 {
 		meta.Name = APP_TITLE
 	}

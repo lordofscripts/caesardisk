@@ -15,7 +15,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/lordofscripts/caesardisk/crypto"
 	"github.com/lordofscripts/gofynex/fynex"
@@ -101,34 +100,21 @@ func (ksv *KeyScheduleViewer) IsDismissed() bool {
 // build up the modal window containing the multi-line text box and
 // the Accept & Cancel buttons at the bottom.
 func (ksv *KeyScheduleViewer) build(w fyne.Window, title string, schedule crypto.KeySchedule) {
-	/* The default Table widget in Fyne is very crappy, what an eyesore.
-	   So let's display just a string formatted row with 1 column instead. */
-	var dataWidget *widget.Table
-
-	dataWidget = widget.NewTable(
+	dataWidget := widget.NewTable(
 		// Table: Dimensions
 		func() (rows int, cols int) {
-			const COLS = 4
-			rows = len(schedule)
-			return rows, COLS
+			return len(schedule), 4
 		},
 		// Table: Create Cell
 		func() fyne.CanvasObject {
-			dlabl := fynex.NewDynamicLabelWithStyle("", fyne.TextAlignCenter, fyne.TextStyle{
-				Bold:      false,
-				Italic:    false,
+			dlabl := fynex.NewDynamicLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{
 				Monospace: true,
 			}, nil)
-			dlabl.Wrapping = fyne.TextWrap(fyne.TextTruncateOff)
-			dlabl.SizeName = theme.SizeNameCaptionText
-			//dlabl.Wrapping = fyne.TextWrapOff
-
 			return dlabl
 		},
 		// Table: Populate
 		func(id widget.TableCellID, o fyne.CanvasObject) {
-			var label *fynex.DynamicLabel
-			label = o.(*fynex.DynamicLabel)
+			label := o.(*fynex.DynamicLabel)
 			item := schedule[id.Row]
 			switch id.Col {
 			case 0:
@@ -138,21 +124,22 @@ func (ksv *KeyScheduleViewer) build(w fyne.Window, title string, schedule crypto
 			case 2:
 				label.SetText(string(item.Tabula))
 			case 3:
-				label.SetText(string(item.Comment))
+				label.SetText(item.Comment)
 			}
 		})
-	//dataWidget.SetColumnWidth(0, 40) // key shift (2 digits)
-	//dataWidget.SetColumnWidth(1, 40) // key letter
 
-	editorContainer := container.NewBorder(nil, nil, nil, nil, dataWidget)
-	ksv.modal = dialog.NewCustom(title+"Key Schedule", "", editorContainer, w)
+	// 1. MUST set explicit column widths
+	dataWidget.SetColumnWidth(0, 25)  // KeyChar
+	dataWidget.SetColumnWidth(1, 30)  // KeyShift
+	dataWidget.SetColumnWidth(2, 250) // Tabula
+	dataWidget.SetColumnWidth(3, 100) // Comment
 
-	buttonAccept := widget.NewButton("OK", func() {
-		ksv.isDismissed = true
-		ksv.modal.Dismiss()
-	})
+	// 2. Wrap in a Max container so the table fills the dialog
+	editorContainer := container.NewStack(dataWidget)
+	ksv.modal = dialog.NewCustom(title+" Key Schedule", "OK", editorContainer, w)
 
-	ksv.modal.SetButtons([]fyne.CanvasObject{buttonAccept})
+	// 3. MUST resize the dialog, otherwise it collapses to minimum size
+	ksv.modal.Resize(fyne.NewSize(600, 400))
 }
 
 /* ----------------------------------------------------------------

@@ -1,10 +1,10 @@
 Website = "https://github.com/lordofscripts"
 
 [Details]
-Icon = "Icon.png"
+Icon = "gui/app_icon.png"
 Name = "caesardisk"
 ID = "com.lordofscripts.app.caesardisk_ui"
-Version = "1.4.0"
+Version = "1.5.0"
 Build = 1
 
 [LinuxAndBSD]
