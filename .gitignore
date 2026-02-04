@@ -29,7 +29,7 @@ go.work.sum
 
 # Editor/IDE
 # .idea/
-# .vscode/
+.vscode/
 docs/CIPHERS.md
 docs/README-old.md
 tests/testdata/input_bin.*
@@ -37,3 +37,4 @@ bin/caesardisk
 bin/gui
 docs/TODO.md
 go-caesardisk.code-workspace
+bin/caesar-gui

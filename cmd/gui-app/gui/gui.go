@@ -22,6 +22,7 @@ import (
 	"github.com/lordofscripts/caesardisk/internal/cipher"
 	"github.com/lordofscripts/goapp/app/logx"
 	"github.com/lordofscripts/gofynex/fynex"
+	"github.com/lordofscripts/gofynex/fynex/dlg"
 )
 
 /* ----------------------------------------------------------------
@@ -74,7 +75,7 @@ type MenuItemActionCB func()
 type MainGUI struct {
 	a        fyne.App
 	w        fyne.Window
-	dlgAbout *fynex.AboutBox
+	dlgAbout *dlg.AboutBox
 
 	gadgets     *appGadgets
 	controllers *appControllers
@@ -143,16 +144,18 @@ func (g *MainGUI) Define() *MainGUI {
 	if meta.Icon == nil {
 		meta.Icon = applicationIcon
 	}
-	if len(meta.Version) == 0 {
-		meta.Version = caesardisk.Version
-	}
+	meta.Version = caesardisk.Version
 	if len(meta.Name) == 0 {
 		meta.Name = APP_TITLE
 	}
 	meta.Custom["url"] = "https://github.com/lordofscripts"
+	meta.Custom["url.text"] = "GitHub"
 
 	// · Help|About dialog
-	g.dlgAbout = fynex.NewAboutBox(myWindow, applicationIcon, meta, aboutCONTENT)
+	me := fynex.NewPersonWithImage("Lord of Scripts™", "BScEE, Developer, Writer", developerIcon)
+	g.dlgAbout = dlg.NewAboutBox(myWindow, applicationIcon, meta).
+		WithText(aboutCONTENT, true, false).
+		WithPersonModel(me)
 
 	// · Main Menu Bar
 	// 	 File menu : Open - Quit

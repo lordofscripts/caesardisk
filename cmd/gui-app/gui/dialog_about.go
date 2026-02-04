@@ -61,7 +61,7 @@ func ShowAboutWindow(content string, links []*widget.Hyperlink, a fyne.App) {
 
 func aboutContent(content string, links []*widget.Hyperlink, a fyne.App) fyne.CanvasObject {
 	rich := widget.NewRichTextFromMarkdown(content)
-	rich.Wrapping = fyne.TextWrapOff
+	rich.Wrapping = fyne.TextWrapWord
 	footer := aboutFooter(links)
 
 	logo := canvas.NewImageFromResource(a.Metadata().Icon)
@@ -71,7 +71,8 @@ func aboutContent(content string, links []*widget.Hyperlink, a fyne.App) fyne.Ca
 	appData := widget.NewRichTextFromMarkdown(
 		"## " + a.Metadata().Name + "\n**Version:** " + a.Metadata().Version)
 	//centerText(appData)
-	appData.Wrapping = fyne.TextWrap(fyne.TextAlignCenter)
+	appData.Wrapping = fyne.TextWrapWord
+	centerRichText(appData)
 	space := canvas.NewRectangle(color.Transparent)
 	space.SetMinSize(fyne.NewSquareSize(theme.Padding() * 4))
 
@@ -190,6 +191,15 @@ func (u unpad) Layout(objs []fyne.CanvasObject, s fyne.Size) {
 		o.Move(pos)
 		o.Resize(size)
 	}
+}
+
+// ensure all segment types are handled for the alignment function
+func centerRichText(rich *widget.RichText) { 
+	for _, s := range rich.Segments { 
+		if t, ok := s.(*widget.TextSegment); ok { 
+			t.Style.Alignment = fyne.TextAlignCenter 
+		} 
+	} 
 }
 
 func (u unpad) MinSize(_ []fyne.CanvasObject) fyne.Size {

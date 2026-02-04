@@ -17,3 +17,12 @@ var applicationIcon = &fyne.StaticResource{
 	StaticName:    "app_icon.png",
 	StaticContent: applicationIconData,
 }
+
+// Embedded developer icon
+//
+//go:embed lordofscripts_logo_small.png
+var developerIconData []byte
+var developerIcon = &fyne.StaticResource{
+	StaticName:    "lordofscripts_logo_small.png",
+	StaticContent: developerIconData,
+}
