@@ -3,7 +3,7 @@
 
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/lordofscripts/caesardisk)
 [![Go Report Card](https://goreportcard.com/badge/github.com/lordofscripts/caesardisk?style=flat-square)](https://goreportcard.com/report/github.com/lordofscripts/caesardisk)
-![Build](https://github.com/lordofscripts/caesardisk/actions/workflows/go.yml/badge.svg)
+![Build](https://github.com/lordofscripts/caesardisk/actions/workflows/go-fyne.yml/badge.svg)
 [![Go Reference](https://pkg.go.dev/badge/github.com/lordofscripts/caesardisk.svg)](https://pkg.go.dev/github.com/lordofscripts/caesardisk)
 [![GitHub release (with filter)](https://img.shields.io/github/v/release/lordofscripts/caesardisk)](https://github.com/lordofscripts/caesardisk/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://choosealicense.com/licenses/mit/)
