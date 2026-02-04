@@ -1,6 +1,6 @@
 /* -----------------------------------------------------------------
- *
- *				  Copyright (C)2025
+ *					L o r d  O f   S c r i p t s (tm)
+ *				  Copyright (C)2025 Dídimo Grimaldo T.
  *							   APP_NAME
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  *
@@ -10,83 +10,75 @@ package gui
 import (
 	"image"
 	"image/color"
+	"log"
+
+	"net/url"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
+
+/* ----------------------------------------------------------------
+ *				I n t e r f a c e s
+ *-----------------------------------------------------------------*/
+
+var _ fyne.Widget = (*ClickableImage)(nil)
+var _ fyne.Tappable = (*ClickableImage)(nil)
 
 /* ----------------------------------------------------------------
  *				P u b l i c		T y p e s
  *-----------------------------------------------------------------*/
 
-type ClickImage struct {
+type ClickableImage struct {
 	widget.BaseWidget
-	img            *canvas.Image
-	box            *fyne.Container
-	OnTapped       func(evt *fyne.PointEvent)
-	OnDoubleTapped func(evt *fyne.PointEvent)
+	image *canvas.Image
+	url   *url.URL
 }
 
 /* ----------------------------------------------------------------
  *				C o n s t r u c t o r s
  *-----------------------------------------------------------------*/
 
-func NewClickImageFromImage(img *canvas.Image) *ClickImage {
-	w := &ClickImage{}
-	w.img = img
-	w.box = container.NewStack(img)
-	w.ExtendBaseWidget(w)
-	return w
-}
+func NewClickableImage(res fyne.Resource, targetURL string, size fyne.Size) *ClickableImage {
+	u, err := url.Parse(targetURL)
+	if err != nil {
+		log.Printf("Invalid URL: %v", err)
+	}
 
-func NewClickImageFromResource(resource fyne.Resource) *ClickImage {
-	w := &ClickImage{}
-	w.img = canvas.NewImageFromResource(resource)
-	w.box = container.NewStack(w.img)
-	w.ExtendBaseWidget(w)
-	return w
+	img := canvas.NewImageFromResource(res)
+	img.FillMode = canvas.ImageFillContain
+	img.SetMinSize(size)
+
+	c := &ClickableImage{
+		image: img,
+		url:   u,
+	}
+
+	c.ExtendBaseWidget(c)
+	return c
 }
 
 /* ----------------------------------------------------------------
  *				P u b l i c		M e t h o d s
  *-----------------------------------------------------------------*/
 
-func (c *ClickImage) SetMinSize(size fyne.Size) {
-	c.img.SetMinSize(size)
-	c.img.Refresh()
+// CreateRenderer implements the fyne.Widget interface.
+func (c *ClickableImage) CreateRenderer() fyne.WidgetRenderer {
+	return widget.NewSimpleRenderer(c.image)
 }
 
-func (c *ClickImage) CreateRenderer() fyne.WidgetRenderer {
-	return widget.NewSimpleRenderer(c.box)
-}
-
-func (c *ClickImage) Tapped(evt *fyne.PointEvent) {
-	if c.OnTapped != nil {
-		c.OnTapped(evt)
+// Tapped implements the fyne.Tappable interface to handle click events.
+func (c *ClickableImage) Tapped(_ *fyne.PointEvent) {
+	if c.url != nil {
+		fyne.CurrentApp().OpenURL(c.url)
 	}
 }
 
-func (c *ClickImage) TappedSecondary(evt *fyne.PointEvent) {
-	if c.OnDoubleTapped != nil {
-		c.OnDoubleTapped(evt)
-	}
+func (c *ClickableImage) SetImage(img *canvas.Image) {
+	c.image = img
+	c.Refresh()
 }
-
-func (c *ClickImage) SetImage(img *canvas.Image) {
-	c.box.RemoveAll()
-	c.box.Add(img)
-}
-
-/*
-attempt to implement fyne.Scrollable to capture mousewheel?
-func (c *ClickImage) Scrolled(event *fyne.ScrollEvent) {
-	dx := int(float64(event.Scrolled.DX))
-	dy := int(float64(event.Scrolled.DY))
-	//scroll.ScrollContainer.Scrolled(event)
-}
-*/
 
 /* ----------------------------------------------------------------
  *					F u n c t i o n s
