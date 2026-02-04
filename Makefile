@@ -30,7 +30,7 @@ PKG_FULL_VERSION=$(shell grep -m 1 'MANUAL_VERSION' version.go | sed -E 's/.*"([
 PKG_PUBLIC_NAME=$(shell grep -m 1 'module' go.mod | sed -E 's/^module\s+//p')
 PKG_NAME=caesardisk
 PKG_REVISION=1
-PKG_VERSION=1.4.0
+PKG_VERSION=${PKG_FULL_VERSION}
 PKG_ARCH=amd64
 PKG_FULLNAME=${PKG_NAME}_${PKG_VERSION}-${PKG_REVISION}_${PKG_ARCH}
 PKG_BUILD_DIR=${HOME}/Develop/Distrib/Build/${PKG_NAME}
@@ -60,6 +60,7 @@ release:
 
 version:
 	@echo $(PKG_FULL_VERSION)
+	@sed -i "s/\(^Version[[:space:]]*=[[:space:]]*\"\)[-.0-9]*\"/\\1${PKG_FULL_VERSION}\"/" cmd/gui-app/FyneApp.toml
 
 proxy:
 	GOPROXY=proxy.golang.org go list -m $(PKG_PUBLIC_NAME)@v$(PKG_FULL_VERSION)
