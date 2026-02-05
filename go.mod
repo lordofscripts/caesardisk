@@ -8,7 +8,7 @@ require (
 	golang.org/x/image v0.35.0
 )
 
-require github.com/lordofscripts/goapp v1.1.1
+require github.com/lordofscripts/goapp v1.2.0
 
 require github.com/lordofscripts/gofynex v1.2.0
 

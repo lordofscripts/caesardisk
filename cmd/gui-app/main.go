@@ -119,15 +119,14 @@ func main() {
 
 	if strings.ToLower(flgLogMode) != "none" {
 		logx.Print(caesardisk.Version)
-		logx.Print(caesardisk.BuildMeta())
+		logx.Print(caesardisk.BuildInfo())
 	}
 
-	caesardisk.Copyright(caesardisk.CO1, true)
+	caesardisk.Copyright(caesardisk.CO1)
 
 	catalogPtr := (*gui.AlphabetList)(&MyAlphabets)
 	myGui := gui.NewGUI(catalogPtr, WheelOptions).Define().Bind()
 	myGui.Run()
 
-	caesardisk.BuildMeta()
-	caesardisk.BuyMeCoffee()
+	caesardisk.BuyMeCoffee("lostinwriting")
 }

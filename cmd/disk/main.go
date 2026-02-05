@@ -91,7 +91,7 @@ func main() {
 	flag.Parse()
 
 	// II. Command-line flag validation and processing
-	caesardisk.Copyright(caesardisk.CO1, true)
+	caesardisk.Copyright(caesardisk.CO1)
 
 	if flgHelp {
 		flag.Usage()
@@ -263,5 +263,5 @@ func main() {
 		}
 	}
 
-	caesardisk.BuyMeCoffee()
+	caesardisk.BuyMeCoffee("lostinwriting")
 }

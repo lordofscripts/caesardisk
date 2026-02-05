@@ -10,6 +10,7 @@ package gui
 import (
 	_ "embed"
 	"errors"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -144,7 +145,7 @@ func (g *MainGUI) Define() *MainGUI {
 	if meta.Icon == nil {
 		meta.Icon = applicationIcon
 	}
-	meta.Version = caesardisk.ShortVersion
+	meta.Version = strings.Replace(caesardisk.ShortVersion, "v", "", 1)
 	if len(meta.Name) == 0 {
 		meta.Name = APP_TITLE
 	}
